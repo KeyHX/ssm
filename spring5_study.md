@@ -129,7 +129,7 @@ public void accountMoney(){
 <!--创建事务管理器-->
 <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
     <!--注入数据源-->
-    <property name="dataSource" ref="dataSource"></property>
+    <property name="dataSource" ref="dataSource"></property>//引用的是jdbc数据源，未copy过来
 </bean>
 ```
 
@@ -467,5 +467,5 @@ public class JTest5 {
 }
 ```
 
-### 5.Spring5框架新功能：先去学SpringMvc
+### 5.Spring5框架新功能：先去学SpringMvc，P53
 
