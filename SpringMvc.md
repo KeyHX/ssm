@@ -307,5 +307,441 @@ public class RequestMappingController {
   <a th:href="@{/hello/test}">测试test注解的位置</a></br>
   ```
 
+## 4、RequestMapping注解的method属性
+
+* @RequestMapping注解的method属性是一个数组，表示该映射能够匹配多种请求的方式。首先请求必须满足value属性，然后才必须满足method属性，如果不满足method属性，则会报405
+
+```
+@Controller
+@RequestMapping("/hello")
+public class RequestMappingController {
+    @RequestMapping(
+            value = {"/testRequestMapping","/test"},//满足一个就可以
+            method = {RequestMethod.GET,RequestMethod.POST}//满足一个就可以
+    )
+    public String success(){
+        return "success";
+    }
+}
+```
+
+```
+<h1>首页</h1>
+<a th:href="@{/hello/testRequestMapping}">测试RequestMapping注解的位置</a><br/>
+<a th:href="@{/hello/test}">测试test注解的位置:get属性</a></br>
+<form th:action="@{/hello/test}" method="post">//method只可以在表单中修改
+    <input type="submit" value="测试method属性：post">
+</form>
+```
+
+注：
+
+1、对于处理指定请求方式的控制器方法，SpringMVC中提供了@RequestMapping的派生注解(可以替代RequestMapping)
+
+处理get请求的映射-->@GetMapping
+
+处理post请求的映射-->@PostMapping
+
+处理put请求的映射-->@PutMapping
+
+处理delete请求的映射-->@DeleteMapping
+
+```
+@GetMapping("/testGetMapping")//method必须是get
+public String testGetMapping(){
+    return "success";
+}
+```
+
+2、目前浏览器只支持get和post，如果是put和delete，则默认按get处理
+
+## 5、RequestMapping注解的params属性（了解）
+
+* RequestMapping注解的params属性通过请求的请求参数匹配请求映射，需要全部满足其属性
+* RequestMapping注解的params属性是一个字符串类型的数组，有四种表达式设置
+  * "param"：要求请求映射所匹配的请求必须携带param请求参数
+  * "!param"：要求请求映射所匹配的请求必须不能携带param请求参数
+  * "param=value"：要求请求映射所匹配的请求必须携带param请求参数且param=value
+  * "param!=value"：要求请求映射所匹配的请求必须携带param请求参数但是param!=value
+
+```
+@RequestMapping(value = "/testParamsAndHeaders",
+                params = {"username","password=123456"}//必须同时匹配
+)
+public String teatParamsAndHeaders(){
+    return "success";
+}
+```
+
+```
+<a th:href="@{/hello/testParamsAndHeaders(username='admin',password=123456)}">测试RequestMapping注解的params属性</a>
+```
+
+注意上图加入参数的写法，出错报404
+
+## 6、RequestMapping注解的headers属性（了解）
+
+@RequestMapping注解的headers属性通过请求的请求头信息匹配请求映射
+
+@RequestMapping注解的headers属性是一个字符串类型的数组，可以通过四种表达式设置请求头信息和请求映射的匹配关系
+
+"header"：要求请求映射所匹配的请求必须携带header请求头信息
+
+"!header"：要求请求映射所匹配的请求必须不能携带header请求头信息
+
+"header=value"：要求请求映射所匹配的请求必须携带header请求头信息且header=value
+
+"header!=value"：要求请求映射所匹配的请求必须携带header请求头信息且header!=value
+
+若当前请求满足@RequestMapping注解的value和method属性，但是不满足headers属性，此时页面显示404错误，即资源未找到
+
+## 7、SpringMVC支持Ant风格的路径（重要）
+
+* ？：表示任意单个字符（特殊符号不能匹配：？、/）
+
+```
+@RequestMapping("/a?a/testAnt")
+public String testAnt(){
+    return "success";
+}
+```
+
+```
+<a th:href="@{/hello/aba/testAnt}" >测试Ant风格的路径——测试使用？</a></br>
+```
+
+* *：表示任意的0个或多个字符
+
+```
+@RequestMapping("/a*a/testAnt")
+public String testAnt(){
+    return "success";
+}
+```
+
+```
+<a th:href="@{/hello/ahduisahduiaa/testAnt}" >测试Ant风格的路径——测试使用*</a></br>
+```
+
+* **：表示任意的一层或多层目录（用/表示一层一层的目录），只能单独的写在两个/中
+
+```
+@RequestMapping("/**/testAnt")
+public String testAnt(){
+    return "success";
+}
+```
+
+```
+<a th:href="@{/hello/a/a/testAnt}" >测试Ant风格的路径——测试使用**</a></br>
+```
+
+## 8、SpringMVC支持路径中的占位符（很重要）
+
+原始方式：/deleteUser?id=1
+
+rest方式：/deleteUser/1
+
+SpringMVC路径中的占位符常用于restful风格中，当请求路径中**将某些数据通过路径的方式传到服务器**，就可以在相应的@RequestMapping注解的value属性中通过占位符传输数据，再通过@PathVariable注解将占位符所表示的数据赋值给形参
+
+```
+@RequestMapping("/testPath/{id}")
+public String testPath(@PathVariable("id")Integer id){//将占位符中的id赋值给形参
+    System.out.println("id:" + id);
+    return "success";
+}
+```
+
+```
+<a th:href="@{/hello/testPath/1}" >支持路径中的占位符——testPath</a></br>
+```
+
+# 四、SpringMVC获取请求参数
+
+## 1、通过ServletAPI获取
+
+将HttpServletRequest作为控制器方法的形参，此时HttpServletRequest类型的参数表示封装了当前请求的报文对象
+
+```
+@RequestMapping("/testServletAPI")
+//形参位置的request表示当前请求
+public String testServletAPI(HttpServletRequest request){
+    String username = request.getParameter("username");
+    String password = request.getParameter("password");
+    System.out.println("username=" + username + ",password=" + password);
+    return "success";
+}
+```
+
+```
+<a th:href="@{/testServletAPI(username='admin',password=123456)}">测试使用ServletAPI获取请求参数</a>
+```
+
+## 2、通过控制器方法形参获取请求参数
+
+在控制器方法的形参位置，**设置和请求参数同名的形参**，当浏览器发送请求，匹配请求映射，在前端控制器DispatcherServlet中就会将请求参数赋值给相应的形参
+
+```
+<form th:action="@{/testParam}" method="post">
+        用户名：<input type="text" name="username"><br/>
+        密 码：<input type="password" name="password"><br/>
+        兴趣爱好：<input type="checkbox" name="hobby" value="a">a
+                 <input type="checkbox" name="hobby" value="b">b
+                 <input type="checkbox" name="hobby" value="c">c<br/>
+                 <input type="submit" value="测试使用控制器形参获取请求参数">
+</form>
+```
+
+```
+@RequestMapping("testParam")
+public String testParam(String username,String password,String[] hobby){
+    //若请求参数中出现多个同名的请求参数，可以在控制方法的形参位置设置字符串类型或字符串数组，接受此请求参数
+    //若使用字符串类型的形参，最终结果为请求参数的每一个值之间使用逗号进行拼接
+    System.out.println("username=" + username + ",password=" + password + ",hobby=" + Arrays.toString(hobby));
+    return "success";
+}
+```
+
+## 3、@RequestParam
+
+* @RequestParam是将请求参数和控制器方法的形参创建映射关系
+
+* @RequestParam注解一共有三个属性：
+
+  * value：指定为形参赋值的请求参数的参数名
+
+  * required：设置是否必须传输此请求参数，默认值为true
+
+    若设置为true时，则当前请求必须传输value所指定的请求参数，若没有传输该请求参数，且没有设置defaultValue属性，则页面报错400：Required String parameter 'xxx' is not present；若设置为false，则当前请求不是必须传输value所指定的请求参数，若没有传输，则注解所标识的形参的值为null
+
+  * defaultValue：不管required属性值为true或false，当value所指定的请求参数没有传输或传输的值为""时，则使用默认值为形参赋值
+
+```
+@RequestParam(value = "user_name",required = false,defaultValue = "hehe") String username,//形参与请求参数名字不一样时，通过注解解决
+```
+
+## 4、@RequestHeader
+
+* @RequestHeader是将请求头信息和控制器方法的形参创建映射关系
+* 注解一共有三个属性：value，required，defaultValue，用法同上
+
+```
+@RequestHeader(value = "Host",required = false,defaultValue = "wahaha") String host
+```
+
+## 5、@CookieValue
+
+* @CookieValue是将cookie数据和控制器方法的形参创建映射关系
+* 注解一共有三个属性：value，required，defaultValue，用法同上
+
+## 6、通过POJO获取请求参数
+
+可以在控制器方法的形参位置设置一个实体类类型的形参，此时若浏览器传输的请求参数的参数名与实体类中的属性名一直，那么请求参数就会为此属性赋值
+
+```
+<form th:action="@{/testBean}" method="post">
+    用户名：<input type="text" name="username"><br>
+    密码：<input type="password" name="password"><br>
+    性别：<input type="radio" name="sex" value="男">男<input type="radio" name="sex" value="女">女<br>
+    年龄：<input type="text" name="age"><br>
+    邮箱：<input type="text" name="email"><br>
+    <input type="submit" value="使用实体类接受请求参数">
+</form>
+```
+
+```
+@RequestMapping("/testBean")
+public String testBean(User user){
+    System.out.println(user);
+    return "success";
+}
+```
+
+```
+public class User {
+    private Integer id;
+    private String username;
+    private String password;
+    private Integer age;
+    private String sex;
+    private String email;
+    public User() {
+    }
+    public User(Integer id, String username, String password, Integer age, String sex, String email) {
+        this.id = id;
+        this.username = username;
+        this.password = password;
+        this.age = age;
+        this.sex = sex;
+        this.email = email;
+    }
+    public Integer getId() {
+        return id;
+    }
+    public void setId(Integer id) {
+        this.id = id;
+    }
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    public Integer getAge() {
+        return age;
+    }
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+    public String getSex() {
+        return sex;
+    }
+    public void setSex(String sex) {
+        this.sex = sex;
+    }
+    public String getEmail() {
+        return email;
+    }
+    public void setEmail(String email) {
+        this.email = email;
+    }
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", username='" + username + '\'' +
+                ", password='" + password + '\'' +
+                ", age=" + age +
+                ", sex='" + sex + '\'' +
+                ", email='" + email + '\'' +
+                '}';
+    }
+}
+```
+
+## 7、解决乱码
+
+解决获取请求参数的乱码问题，在web.xml中进行注册
+
+```
+<!--解决乱码-->
+    <filter>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+```
+
+# 五、域对象
+
+## 1、使用servletAPI向request域对象共享数据
+
+```
+<a th:href="@{/testRequestByServlet}">通过ServletAPI向request域对象共享数据</a>
+```
+
+```
+//使用ServletAPI向request域对象共享数据
+@RequestMapping("/testRequestByServlet")
+public String testRequestByServlet(HttpServletRequest request){
+    request.setAttribute("testRequestScope","hello,servletAPI");
+    return "success";
+}
+```
+
+```
+success<br/>
+<p th:text="${testRequestScope}"></p>
+```
+
+## 2、使用ModelAndView向request域对象共享数据（重要）
+
+* ModelAndView有两个功能：
+  * 向request域对象添加数据
+  * 设置视图的名称
+
+```
+<a th:href="@{/testModelAndView}">通过testModelAndView向request域对象共享数据</a><br/>
+```
+
+```
+@RequestMapping("/testModelAndView")
+public ModelAndView testModelAndView(){//ModelAndView有两个功能：第一个Model，设置数据；第二个View，设置视图
+    ModelAndView mav = new ModelAndView();
+    //处理模型数据，即向请求域request共享数据
+    mav.addObject("testRequestScope","hello,ModelAndView");
+    //设置视图名称
+    mav.setViewName("success");
+    return mav;
+}
+```
+
+## 3、使用Model向request域对象共享数据
+
+```
+<a th:href="@{/testModel}">通过Model向request域对象共享数据</a><br/>
+```
+
+```
+@RequestMapping("/testModel")
+public String testModel(Model model){
+    model.addAttribute("testRequestScope","hello,model");
+    return "success";
+}
+```
+
+## 4、使用Map向request域对象共享数据
+
+```
+<a th:href="@{/testMap}">通过Map向request域对象共享数据</a><br/>
+```
+
+```
+@RequestMapping("/testMap")
+public String testMap(Map<String,Object> map){
+    map.put("testRequestScope","hello,map");
+    return "success";
+}
+```
+
+## 5、使用ModelMap向request域对象中共享数据
+
+```
+<a th:href="@{/testModelMap}">通过ModelMap向request域对象共享数据</a><br/>
+```
+
+```
+@RequestMapping("/testModelMap")
+public String testModelMap(ModelMap modelMap){
+    modelMap.addAttribute("testRequestScope","hello,modelMap");
+    return "success";
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
