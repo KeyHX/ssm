@@ -731,6 +731,269 @@ public String testModelMap(ModelMap modelMap){
 }
 ```
 
+## 6、Model、ModelMap、Map之间的关系
+
+Model、ModelMap、Map类型的参数本质上都是BindingAwareModelMap类型的
+
+## 7、向Session域共享数据
+
+```
+@RequestMapping("/testSession")
+public String testSession(HttpSession session){
+    session.setAttribute("testSessionScope","hello,session");
+    return "success";
+}
+```
+
+```
+<a th:href="@{/testSession}">通过ServletAPI向session域对象共享数据</a><br/>
+```
+
+```
+<p th:text="${session.testSessionScope}"></p>
+```
+
+## 8、向applictaion域共享数据
+
+```
+@RequestMapping("/testApplication")
+public String testApplication(HttpSession session){
+    ServletContext application = session.getServletContext();
+    application.setAttribute("testApplication","hello,application");
+    return "success";
+}
+```
+
+```
+<a th:href="@{/testApplication}">通过ServletAPI向application域对象共享数据</a><br/>
+```
+
+```
+<p th:text="${application.testApplication}"></p>
+```
+
+# 六、SpringMVC的视图
+
+* SpringMVC中的视图是View接口，视图的作用渲染数据，将模型Model中的数据展示给用户
+
+* SpringMVC视图的种类有很多，默认有转发视图InternalResourceView和重定向视图RedirectView
+
+* 若使用的视图技术为Thymeleaf，在SpringMVC的配置文件中配置了Thymeleaf的视图解析器，由此视图解析器解析之后所得到的是ThymeleafView
+
+## 1、ThymeleafView
+
+当控制器方法中所设置的视图名称没有任何前缀时，此时的视图名称会被SpringMVC配置文件中所配置的视图解析器解析，视图名称拼接视图前缀和视图后缀所得到的最终路径，会通过转发的方式实现跳转
+
+```
+@RequestMapping("/testThymeleafView")
+public String testThymeleafView(){
+    return "success";
+}
+```
+
+## 2、转发视图
+
+SpringMVC中默认的转发视图是InternalResourceView
+
+SpringMVC创建转发视图的情况：
+
+当控制器方法中所设置的视图名称以“forward：”为前缀时，创建InternalResourceView视图，此时的视图名称不会被ThymeleafView解析器解析，而是会将前缀“forward：”去掉，剩余部分作为最终的路径通过转发的方式实现跳转
+
+```
+@RequestMapping("/testThymeleafView")
+public String testThymeleafView(){
+    return "success";
+}
+
+@RequestMapping("/testForward")
+public String testForward(){
+    return "forward:/testThymeleafView";
+}
+```
+
+## 3、重定向视图
+
+SpringMVC中默认的重定向视图是RedirectView
+
+当控制器方法中所设置的视图名称以“refirect：”为前缀时，创建RedirectView视图，此时的视图名称不会被ThymeleafView解析器解析，而是会将前缀“refirect：”去掉，剩余部分作为最终的路径通过重定向的方式实现跳转
+
+转发和重定向区别：转发是浏览器发送一次请求(服务器内部跳转一次，但是浏览器中的地址栏不发生变化)。重定向是浏览器发送两次请求，第一次访问Servlet，第二次访问重定向的地址（浏览器地址栏中的地址发生变化）。转发可以获取请求域中的数据，重定向不可以，因为转发是一次请求，用到的request是同一个。转发可以访问WEB-INF中的资源，但是重定向不可以，因为WEB-INF下的内容具有安全性，只能通过服务器内部进行访问。
+
+```
+@RequestMapping("/testThymeleafView")
+public String testThymeleafView(){
+    return "success";
+}
+
+@RequestMapping("/testForward")
+public String testForward(){
+    return "forward:/testThymeleafView";
+}
+
+@RequestMapping("/testRedirect")
+public String testRedirect(){
+    return "redirect:/testThymeleafView";
+}
+```
+
+## 4、视图控制器
+
+当控制器方法中，仅仅用来实现页面跳转，即只需要设置视图的名称时，可以将处理器方法使用view-controller标签进行表示
+
+```
+//    @RequestMapping("/")
+//    public String index(){
+//        return "index";
+//    }
+```
+
+```
+<!--
+    path:设置处理的请求地址
+    view-name：设置请求地址对应的视图名称
+-->
+<mvc:view-controller path="/" view-name="index"></mvc:view-controller>//这一行代码实现的是上一段代码块的功能
+```
+
+```
+<!--开启mvc的注解驱动，不开启的话index里面的链接全部失效-->
+<mvc:annotation-driven/>
+```
+
+## 5、使用JSP时的配置
+
+在视图使用的是jsp时，变化的地方：springMVC的配置，不再使用ThymeleafView进行配置
+
+```
+<!--扫描组件-->
+<context:component-scan base-package="com.hua.mvc.controller"></context:component-scan>
+
+<!--jsp不设置任何的前缀也是转发的效果，所以可以采用转发视图-->
+<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+    <!--前缀-->
+    <property name="prefix" value="/WEB-INF/templates/"></property>
+    <!--后缀-->
+    <property name="suffix" value=".jsp"></property>
+</bean>
+```
+
+在写href时也有变化
+
+```
+<body>
+    <h1>首页</h1>
+    <a href="${pageContext.request.contextPath}/success">success.jsp</a>
+</body>
+```
+
+# 七、RESTFul
+
+## 1、RESTFul简介
+
+REST：Representational State Transfer
+
+* 资源的表述
+
+​	资源是一种看待服务器的方式，服务器可以看成是由许多离散的资源组成的。它不仅仅可以代表服务器上的一个文件、数据库的表等。资源的表述是对资源在某个特定时刻的状态的表述，可以在服务器与客户端之间进行转移（交换）。资源的表述有多种格式，如HTML/JSON/音视频等等
+
+* 状态的转移
+
+在客户端与服务器之间转移代表资源状态的表述，通过转移和操作资源的表述，来间接实现资源的表述
+
+## 2、RESTFul的实现
+
+在HTTP协议里面，四个表示操作方式的动词：GET(查询资源)、POST(新建资源)、PUT(更新资源)、DELETE(删除)
+
+REST风格提倡URL地址使用统一的风格设计，从前到后各个单词使用斜杠分开，不使用问好键值对的方式携带请求参数，而是将要发送给服务器的数据作为URL地址的一部分。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
