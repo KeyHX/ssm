@@ -906,33 +906,603 @@ REST：Representational State Transfer
 
 REST风格提倡URL地址使用统一的风格设计，从前到后各个单词使用斜杠分开，不使用问好键值对的方式携带请求参数，而是将要发送给服务器的数据作为URL地址的一部分。
 
+## 3、四个操作的实现
 
+* get请求分为两种
 
+  * 查询所有用户的信息
 
+    ```
+    @RequestMapping(
+            value = "/user",
+            method = {RequestMethod.GET}
+    )
+    public String getAllUser(){
+        System.out.println("查询所有用户信息");
+        return "success";
+    }
+    ```
 
+    ```
+    <a th:href="@{/user}">查询所有用户信息</a><br/>//默认是get请求
+    ```
 
+  * 根据id查询用户信息
 
+    ```
+    @RequestMapping(value = "/user/{id}",method = RequestMethod.GET)
+    public String getUserById(){
+        System.out.println("根据id查询用户信息");
+        return "success";
+    }
+    ```
 
+    ```
+    <a th:href="@{/user/1}">根据id查询用户信息</a><br/>
+    ```
 
+* post请求
 
+  ```
+  @RequestMapping(value = "/user",method = RequestMethod.POST)
+  public String insertUser(String username,String password){
+      System.out.println("添加用户信息：" + username + "," + password);
+      return "success";
+  }
+  ```
 
+  ```
+  <form th:action="@{/user}" method="post">
+      用户名：<input type="text" name="username"><br/>
+      密 码：<input type="password" name="password"><br/>
+            <input type="submit" value="添加">
+  </form>
+  ```
 
+* put请求
 
+要先配置HiddenHttpMethodFilter，以供put和delete功能的实现，在web.xml中进行配置，要在配置编码过滤器之后，不然还会出现乱码
 
+```
+<!--配置HiddenHttpMethodFilter-->
+<filter>
+    <filter-name>HiddenHttpMethodFilter</filter-name>
+    <filter-class>org.springframework.web.filter.HiddenHttpMethodFilter</filter-class>
+</filter>
+<filter-mapping>
+    <filter-name>HiddenHttpMethodFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+</filter-mapping>
+```
 
+```
+@RequestMapping(value = "/user",method = RequestMethod.PUT)
+public String updateUser(String username,String password){
+    System.out.println("修改用户信息：" + username + "," + password);
+    return "success";
+}
+```
 
+```
+<!--
+    method写的不是post和get，默认按照get来处理
+    修改用户信息
+-->
+<form th:action="@{/user}" method="post">
+    <input type="hidden" name="_method" value="put">//name和value是固定写法
+    用户名：<input type="text" name="username"><br/>
+    密 码：<input type="password" name="password"><br/>
+    <input type="submit" value="修改"><br/>
+</form>
+```
 
+# 八、RESTFul案例
 
+## 1、搭环境（完整可参考）
 
+* 1、创建一个maven，并配置maven的环境
 
+  ```
+  <!--打包方式-->
+  <packaging>war</packaging>
+  <!--添加依赖-->
+  <dependencies>
+      <!-- SpringMVC -->
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-webmvc</artifactId>
+          <version>5.3.1</version>
+      </dependency>
+  
+      <!-- 日志 -->
+      <dependency>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+          <version>1.2.3</version>
+      </dependency>
+  
+      <!-- ServletAPI -->
+      <dependency>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
+          <version>3.1.0</version>
+          <scope>provided</scope>
+      </dependency>
+  
+      <!-- Spring5和Thymeleaf整合包 -->
+      <dependency>
+          <groupId>org.thymeleaf</groupId>
+          <artifactId>thymeleaf-spring5</artifactId>
+          <version>3.0.12.RELEASE</version>
+      </dependency>
+  </dependencies>
+  ```
 
+* 2、在src\main下创建一个model：webapp，project strcture下创建一个web.xml
 
+  ```
+   <!--
+      配置编码过滤器,设置编码之前不能获取任何的请求参数，所以配置编码过滤器要在配置HiddenHttpMethodFilter之前
+  -->
+   <filter>
+       <filter-name>CharacterEncodingFilter</filter-name>
+       <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+       <init-param>
+           <param-name>encoding</param-name>
+           <param-value>UTF-8</param-value>
+       </init-param>
+       <init-param>
+           <param-name>forceResponseEncoding</param-name>
+           <param-value>true</param-value>
+       </init-param>
+   </filter>
+   <filter-mapping>
+       <filter-name>CharacterEncodingFilter</filter-name>
+       <url-pattern>/*</url-pattern>
+   </filter-mapping>
+  
+   <!--配置处理请求方式put和delete的HiddenHttpMethodFilter-->
+   <filter>
+       <filter-name>HiddenHttpMethodFilter</filter-name>
+       <filter-class>org.springframework.web.filter.HiddenHttpMethodFilter</filter-class>
+   </filter>
+   <filter-mapping>
+       <filter-name>HiddenHttpMethodFilter</filter-name>
+       <url-pattern>/*</url-pattern>
+   </filter-mapping>
+  
+   <!--配置前端控制器-->
+   <servlet>
+       <servlet-name>DispatcherServlet</servlet-name>
+       <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+       <init-param>
+           <param-name>contextConfigLocation</param-name>
+           <param-value>classpath:springMVC.xml</param-value>
+       </init-param>
+       <load-on-startup>1</load-on-startup>
+   </servlet>
+   <servlet-mapping>
+       <servlet-name>DispatcherServlet</servlet-name>
+       <url-pattern>/</url-pattern>
+   </servlet-mapping>
+  ```
 
+* 3、在resources下创建一个springMVC.xml
 
+  ```
+  <!--扫描组件-->
+  <context:component-scan base-package="com.hua.rest"></context:component-scan>
+  
+  <!--配置视图解析器-->
+  <!-- 配置Thymeleaf视图解析器 -->
+  <bean id="viewResolver" class="org.thymeleaf.spring5.view.ThymeleafViewResolver">
+      <!--配置视图解析器的优先级-->
+      <property name="order" value="1"/>
+      <!--编码-->
+      <property name="characterEncoding" value="UTF-8"/>
+      <property name="templateEngine">
+          <bean class="org.thymeleaf.spring5.SpringTemplateEngine">
+              <property name="templateResolver">
+                  <bean class="org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver">
+                      <!-- 视图前缀 -->
+                      <property name="prefix" value="/WEB-INF/templates/"/>
+                      <!-- 视图后缀 -->
+                      <property name="suffix" value=".html"/>
+                      <property name="templateMode" value="HTML5"/>
+                      <property name="characterEncoding" value="UTF-8" />
+                  </bean>
+              </property>
+          </bean>
+      </property>
+  </bean>
+  ```
 
+## 2、案例的其他环境
 
+* 1、创建实体类
 
+​		employee类
 
+```
+public class Employee {
+    private Integer id;
+    private String lastName;
+
+    private String email;
+    //1 male, 0 female
+    private Integer gender;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Integer getGender() {
+        return gender;
+    }
+
+    public void setGender(Integer gender) {
+        this.gender = gender;
+    }
+
+    public Employee(Integer id, String lastName, String email, Integer gender) {
+        super();
+        this.id = id;
+        this.lastName = lastName;
+        this.email = email;
+        this.gender = gender;
+    }
+
+    public Employee() {
+    }
+```
+
+* 2、dao包
+
+```
+@Repository
+public class EmployeeDao {
+    private static Map<Integer, Employee> employees = null;
+
+    static{
+        employees = new HashMap<Integer, Employee>();
+
+        employees.put(1001, new Employee(1001, "E-AA", "aa@163.com", 1));
+        employees.put(1002, new Employee(1002, "E-BB", "bb@163.com", 1));
+        employees.put(1003, new Employee(1003, "E-CC", "cc@163.com", 0));
+        employees.put(1004, new Employee(1004, "E-DD", "dd@163.com", 0));
+        employees.put(1005, new Employee(1005, "E-EE", "ee@163.com", 1));
+    }
+
+    private static Integer initId = 1006;
+
+    public void save(Employee employee){
+        if(employee.getId() == null){
+            employee.setId(initId++);//先赋值在添加
+        }
+        employees.put(employee.getId(), employee);
+    }
+
+    public Collection<Employee> getAll(){
+        return employees.values();
+    }
+
+    public Employee get(Integer id){
+        return employees.get(id);
+    }
+
+    public void delete(Integer id){
+        employees.remove(id);
+    }
+}
+```
+
+## 3、案例的功能清单
+
+| 功能                 | URL地址     | 请求方式 |
+| -------------------- | ----------- | -------- |
+| 访问首页             | /           | GET      |
+| 查询全部数据         | /employee   | GET      |
+| 删除                 | /employee/2 | DELETE   |
+| 跳转到添加数据的页面 | /toAdd      | GET      |
+| 执行保存             | /employee   | POST     |
+| 跳转到更新数据的页面 | /employee/2 | GET      |
+| 执行更新             | /employee   | PUT      |
+
+## 4、功能实现：访问首页
+
+* 1、在springMVC中配置
+
+```
+<!--配置访问首页-->
+<mvc:view-controller path="/" view-name="index"></mvc:view-controller>
+```
+
+* 2、创建首页界面：index.heml界面
+
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>首页</title>
+</head>
+<body>
+    <h1>首页</h1>
+    <a th:href="@{/employee}">查看员工信息</a>
+</body>
+</html>
+```
+
+## 5、功能实现：查询全部数据
+
+* 控制器方法
+
+```
+//查询全部数据
+@RequestMapping(value = "/employee",method = {RequestMethod.GET})
+public String getAllEmployee(Model model){
+    Collection<Employee> employeeList = employeeDao.getAll();
+    model.addAttribute("employeeList",employeeList);//向request域中存入数据
+    return "employee_list";
+}
+```
+
+* 创建显示数据页面
+
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee Info</title>
+    <script type="text/javascript" th:src="@{/static/js/vue.js}"></script>
+</head>
+<body>
+
+    <table border="1" cellpadding="0" cellspacing="0" style="text-align: center;" id="dataTable">
+        <tr>
+            <th colspan="5">Employee Info</th>
+        </tr>
+        <tr>
+            <th>id</th>
+            <th>lastName</th>
+            <th>email</th>
+            <th>gender</th>
+            <th>options(<a th:href="@{/toAdd}">add</a>)</th>
+        </tr>
+        <tr th:each="employee : ${employeeList}">
+            <td th:text="${employee.id}"></td>
+            <td th:text="${employee.lastName}"></td>
+            <td th:text="${employee.email}"></td>
+            <td th:text="${employee.gender}"></td>
+            <td>
+                <a class="deleteA" @click="deleteEmployee" th:href="@{'/employee/'+${employee.id}}">delete</a>
+                <a th:href="@{'/employee/'+${employee.id}}">update</a>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+```
+
+## 6、功能实现:删除
+
+* 创建处理delete请求方式的表单
+
+```
+<!-- 作用：通过超链接控制表单的提交，将post请求转换为delete请求 -->
+<form id="delete_form" method="post">
+    <!-- HiddenHttpMethodFilter要求：必须传输_method请求参数，并且值为最终的请求方式 -->
+    <input type="hidden" name="_method" value="delete"/>
+</form>
+```
+
+* 删除超链接绑定点击事件
+
+​		引入vue.js
+
+```
+<script type="text/javascript" th:src="@{/static/js/vue.js}"></script>
+```
+
+​		删除超链接
+
+```
+<a class="deleteA" @click="deleteEmployee" th:href="@{'/employee/'+${employee.id}}">delete</a>
+```
+
+​		通过vue处理点击事件
+
+```
+<script type="text/javascript">
+    var vue = new Vue({
+        el:"#dataTable",
+        methods:{
+            //event表示当前事件
+            deleteEmployee:function (event) {
+                //通过id获取表单标签
+                var delete_form = document.getElementById("delete_form");
+                //将触发事件的超链接的href属性为表单的action属性赋值
+                delete_form.action = event.target.href;
+                //提交表单
+                delete_form.submit();
+                //阻止超链接的默认跳转行为
+                event.preventDefault();
+            }
+        }
+    });
+</script>
+```
+
+* 控制器方法
+
+```
+@RequestMapping(value = "/employee/{id}", method = RequestMethod.DELETE)
+public String deleteEmployee(@PathVariable("id") Integer id){
+    employeeDao.delete(id);
+    return "redirect:/employee";
+}
+```
+
+## 7、功能实现：跳转到添加数据的页面
+
+* 配置跳转
+
+```
+<mvc:view-controller path="/toAdd" view-name="employee_add"></mvc:view-controller>
+```
+
+* 创建employee_add
+
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Employee</title>
+</head>
+<body>
+
+<form th:action="@{/employee}" method="post">
+    lastName:<input type="text" name="lastName"><br>
+    email:<input type="text" name="email"><br>
+    gender:<input type="radio" name="gender" value="1">male
+    <input type="radio" name="gender" value="0">female<br>
+    <input type="submit" value="add"><br>
+</form>
+
+</body>
+</html>
+```
+
+## 8、功能实现：执行保存
+
+* 控制器方法
+
+```
+@RequestMapping(value = "/employee", method = RequestMethod.POST)
+public String addEmployee(Employee employee){
+    employeeDao.save(employee);
+    return "redirect:/employee";
+}
+```
+
+## 9、功能实现：跳转到更新页面
+
+* 修改超链接
+
+```
+<a th:href="@{'/employee/'+${employee.id}}">update</a>
+```
+
+* 控制器方法
+
+```
+@RequestMapping(value = "/employee/{id}", method = RequestMethod.GET)
+public String getEmployeeById(@PathVariable("id") Integer id, Model model){
+    Employee employee = employeeDao.get(id);
+    model.addAttribute("employee", employee);
+    return "employee_update";
+}
+```
+
+* 创建employee_update.html
+
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Update Employee</title>
+</head>
+<body>
+
+<form th:action="@{/employee}" method="post">
+    <input type="hidden" name="_method" value="put">
+    <input type="hidden" name="id" th:value="${employee.id}">
+    lastName:<input type="text" name="lastName" th:value="${employee.lastName}"><br>
+    email:<input type="text" name="email" th:value="${employee.email}"><br>
+    <!--
+        th:field="${employee.gender}"可用于单选框或复选框的回显
+        若单选框的value和employee.gender的值一致，则添加checked="checked"属性
+    -->
+    gender:<input type="radio" name="gender" value="1" th:field="${employee.gender}">male
+    <input type="radio" name="gender" value="0" th:field="${employee.gender}">female<br>
+    <input type="submit" value="update"><br>
+</form>
+
+</body>
+</html>
+```
+
+## 10、功能实现：执行更新
+
+* 控制器方法
+
+```
+@RequestMapping(value = "/employee", method = RequestMethod.PUT)
+public String updateEmployee(Employee employee){
+    employeeDao.save(employee);
+    return "redirect:/employee";
+}
+```
+
+# 九、HttpMessageConverter
+
+* HttpMessageConverter是报文信息转换器，将请求报文转换为Java对象，或将Java对象转换为响应报文。请求报文：浏览器向服务器请求信息；响应报文：服务器响应浏览器的请求
+* HttpMessageConverter提供了两个注解和两个类型：@RequestBody，@ResponseBody，RequestEntity，ResponseEntity
+
+## 1、@RequestBody
+
+@RequestBody可以获取请求体，需要在控制器方法中设置一个形参，使用@RequestBody进行标识，当前请求的请求体就会为当前注解所标识的形参赋值
+
+```
+@RequestMapping(value = "/testRequestBody")
+public String testRuquestBody(@RequestBody String requestBody){
+    System.out.println("requestBody:" + requestBody);
+    return "success";
+}
+```
+
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>首页</title>
+</head>
+<body>
+<h1>首页</h1>
+<form th:action="@{/testRequestBody}" method="post">
+    <input type="text" name="username"><br/>
+    <input type="password" name="password"><br/>
+    <input type="submit" value="测试@RequestBody">
+</form>
+</body>
+</html>
+```
+
+运行的结果为：requestBody:username=admin&password=admin
 
 
 
