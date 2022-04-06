@@ -1472,9 +1472,9 @@ public String updateEmployee(Employee employee){
 * HttpMessageConverter是报文信息转换器，将请求报文转换为Java对象，或将Java对象转换为响应报文。请求报文：浏览器向服务器请求信息；响应报文：服务器响应浏览器的请求
 * HttpMessageConverter提供了两个注解和两个类型：@RequestBody，@ResponseBody，RequestEntity，ResponseEntity
 
-## 1、@RequestBody
+## 1、@RequestBody--标注形参
 
-@RequestBody可以获取请求体，需要在控制器方法中设置一个形参，使用@RequestBody进行标识，当前请求的请求体就会为当前注解所标识的形参赋值
+@RequestBody是注解，可以获取**请求体**，需要在控制器方法中设置一个形参，使用@RequestBody进行标识，当前请求的请求体就会为当前注解所标识的形参赋值
 
 ```
 @RequestMapping(value = "/testRequestBody")
@@ -1503,6 +1503,273 @@ public String testRuquestBody(@RequestBody String requestBody){
 ```
 
 运行的结果为：requestBody:username=admin&password=admin
+
+## 2、RequestEntity -- 标注形参
+
+RequestEntity是类型，可以获取请求报文的信息，分为请求头和请求体（只有post才有请求头和请求体）
+
+```
+@RequestMapping("/testRequestEntity")
+public String testRuquestEntity(RequestEntity<String> requestEntity){
+    //requestEntity表示整个请求报文的信息
+    System.out.println("请求头:" + requestEntity.getHeaders());
+    System.out.println("请求体:" + requestEntity.getBody() );
+    return "success";
+}
+```
+
+```
+<form th:action="@{/testRequestEntity}" method="post">
+    <input type="text" name="username"><br/>
+    <input type="password" name="password"><br/>
+    <input type="submit" value="测试@RequestEntity">
+</form>
+```
+
+## 3、@ResponseBody -- 标注控制器方法
+
+ResponseBody可以响应浏览器的请求
+
+```
+@RequestMapping("/testResponse")
+public void testResponce(HttpServletResponse response) throws IOException {
+    response.getWriter().write("hello,response");
+}
+
+@RequestMapping("/testResponseBody")
+@ResponseBody
+public String testResponseBody(){
+    //作为方法的返回值就可以达到上面一个方法的效果
+    return "hello,ResponseBody";
+}
+```
+
+```
+<a th:href="@{/testResponse}">通过servletAPI的response对象响应浏览器的数据</a><br/>
+
+<a th:href="@{/testResponseBody}">通过@ResponseBody响应浏览器的数据</a><br/>
+```
+
+## 4、@ResponseBody处理json
+
+处理json的步骤：
+
+1、导入json的依赖
+
+```
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.12.1</version>
+</dependency>
+```
+
+2、在springMVC中开启mvc注解驱动，此时在HandlerAdaptor中会自动装配一个消息转换器，可以将响应到浏览器的java对象转换为json格式
+
+```
+<mvc:annotation-driven/>
+```
+
+3、在控制器方法上使用@ResponseBody注解进行标识
+
+4、将java对象直接作为控制器方法的返回值返回，就会自动转换为json格式的字符串
+
+```
+@RequestMapping("/testReaponseUser")
+@ResponseBody
+public User testReaponseUser(){
+    return new User(1001,"admin","123456",23,"man");
+}
+```
+
+## 5、@RestController注解
+
+@RestController注解是springMVC提供的一个复合注解，标识在控制器的类上，就相当于为类添加了@Controller注解，并且为其中的每个方法添加了@ResponseBody注解
+
+## 6、ResponseEntity  -- 标注返回值类型
+
+ResponseEntity用于控制器方法的返回值类型，该控制器方法的返回值就是响应到浏览器的响应报文。作用：文件下载
+
+
+
+# 十、文件的上传和下载
+
+## 1、文件的下载
+
+使用ResponseEntity实现文件下载的功能
+
+```
+@RequestMapping("/testDown")
+public ResponseEntity<byte[]> testResponseEntity(HttpSession session) throws IOException {
+    //获取ServletContext对象
+    ServletContext servletContext = session.getServletContext();
+    //获取服务器中文件的真实路径
+    String realPath = servletContext.getRealPath("/static/img/picture.jpg");
+    //创建输入流
+    InputStream is = new FileInputStream(realPath);
+    //创建字节数组，is.available()获取文件所有字节数
+    byte[] bytes = new byte[is.available()];
+    //将流读到字节数组中，读入的是文件对应的所有字节
+    is.read(bytes);
+
+
+    //创建HttpHeaders对象设置响应头信息
+    MultiValueMap<String, String> headers = new HttpHeaders();
+    //设置要下载方式以及下载文件的名字
+    headers.add("Content-Disposition", "attachment;filename=picture.jpg");
+    //设置响应状态码
+    HttpStatus statusCode = HttpStatus.OK;
+    //创建ResponseEntity对象
+    ResponseEntity<byte[]> responseEntity = new ResponseEntity<byte[]>(bytes, headers, statusCode);
+    //关闭输入流
+    is.close();
+    return responseEntity;
+}
+```
+
+```
+<a th:href="@{testDown}">下载picture</a>
+```
+
+## 2、文件的上传
+
+文件上传必须是form表单，post请求，并且添加属性enctype="multipart/form-data"
+
+SpringMVC中将上传的文件封装到MultipartFile对象中，通过此对象获取文件的相关信息
+
+上传步骤：
+
+1、添加依赖
+
+```
+<dependency>
+    <groupId>commons-fileupload</groupId>
+    <artifactId>commons-fileupload</artifactId>
+    <version>1.3.1</version>
+</dependency>
+```
+
+2、在SpringMVC的配置文件中添加配置
+
+```
+<!--必须通过文件解析器的解析才能将文件转换为MultipartFile对象-->
+<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"></bean>
+```
+
+3、控制器方法
+
+```
+    @RequestMapping("/testUp")
+    public String testUp(MultipartFile photo,HttpSession session) throws IOException {
+//        System.out.println(photo.getName());//获取当前表单元素的name属性值
+//        System.out.println(photo.getOriginalFilename());//获取当前上传文件的名字
+        String fileName = photo.getOriginalFilename();
+        ServletContext servletContext = session.getServletContext();
+        String photoPath = servletContext.getRealPath("photo");
+        File file = new File(photoPath);
+        //判断photoPath所对应的路径是否存在
+        if(!file.exists()){
+            //不存在就创建
+            file.mkdir();
+        }
+        //加上分隔符和文件名
+        String finalPath = photoPath + File.separator + fileName;
+        photo.transferTo(new File(finalPath));
+        return "success";
+    }
+```
+
+## 3、文件上传时文件名重名的问题
+
+使用UUID解决文件重名的问题
+
+```
+ @RequestMapping("/testUp")
+    public String testUp(MultipartFile photo,HttpSession session) throws IOException {
+//        System.out.println(photo.getName());//获取当前表单元素的name属性值
+//        System.out.println(photo.getOriginalFilename());//获取当前上传文件的名字
+        //获取上传的文件的文件名
+        String fileName = photo.getOriginalFilename();
+        //获取上传的文件的后缀名
+        String suffixName = fileName.substring(fileName.lastIndexOf("."));
+        //将UUID作为文件名
+        String uuid = UUID.randomUUID().toString();
+        //将uuid和后缀名拼接的结果作为最终的文件名
+        fileName = uuid + suffixName;
+
+        //通过ServletContext获取服务器中photo目录的路径
+        ServletContext servletContext = session.getServletContext();
+        String photoPath = servletContext.getRealPath("photo");
+        File file = new File(photoPath);
+        //判断photoPath所对应的路径是否存在
+        if(!file.exists()){
+            //不存在就创建
+            file.mkdir();
+        }
+        //加上分隔符和文件名
+        String finalPath = photoPath + File.separator + fileName;
+        photo.transferTo(new File(finalPath));
+        return "success";
+    }
+```
+
+
+
+# 十一、拦截器的配置
+
+## 1、拦截器的配置
+
+SpringMVC中的拦截器用于拦截控制器方法的执行
+
+SpringMVC中的拦截器需要实现HandlerInterception
+
+SpringMVC的拦截器必须在SpringMVC的配置文件中进行配置
+
+```
+<!--
+    配置拦截器
+-->
+<mvc:interceptors>
+    <!--此配置默认对所有的DispatcherServlet请求都会拦截-->
+    <!--<bean class="com.hua.mvc.interceptors.FirstInterceptor"></bean>-->
+    <!--<ref bean="firstInterceptor"></ref>-->
+
+    <!--此配置可以设置当前的拦截路径-->
+    <mvc:interceptor>
+        <!--/** 表示拦截所有的请求-->
+        <mvc:mapping path="/**"/>
+        <!--下面的是排除一些请求不拦截-->
+        <mvc:exclude-mapping path="/"/>
+        <bean class="com.hua.mvc.interceptors.FirstInterceptor"></bean>
+    </mvc:interceptor>
+</mvc:interceptors>
+```
+
+## 2、拦截器的三个抽象方法
+
+SpringMVC中的拦截器的三个抽象方法
+
+preHandle：控制器方法执行之前执行preHandle()，其返回的Boolean类型表示是否放行，返回true放行，返回false表示拦截，即不调用控制器方法
+
+postHandle：控制器方法执行之后执行postHandle
+
+afterComplation：处理完视图和模型数据，渲染视图完毕之后执行afterComplation
+
+## 3、多个拦截器的执行顺序
+
+* 若每个拦截器的preHandle都返回true
+
+此时多个拦截器的执行顺序和拦截器在SpringMVC的配置文件和配置的顺序有关
+
+preHandle会按照配置的顺序执行，而postHandle和afterComplation会按照配置的反序执行
+
+* 若某个拦截器的preHandle返回了false
+
+preHandle返回false和它之前的拦截器的preHandle都会执行，postHandle都不执行，返回false的拦截器之前的拦截器的afterComplation都会执行
+
+
+
+
 
 
 
