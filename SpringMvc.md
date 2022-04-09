@@ -46,7 +46,7 @@ SpringMVC是Spring为表述层开发提供的一整套完整的开发，三层�
 
 ​		在pom.xml中引入依赖
 
-```
+```xml
  <!--打包方式-->
     <packaging>war</packaging>
     <!--添加依赖-->
@@ -114,7 +114,7 @@ SpringMVC是Spring为表述层开发提供的一整套完整的开发，三层�
 
 可通过init-param标签设置SpringMVC配置文件的位置和名称，通过load-on-startup标签设置SpringMVC前端控制器DispatcherServlet的初始化时间
 
-```
+```xml
 <!-- 配置SpringMVC的前端控制器，对浏览器发送的请求统一进行处理 -->
 <servlet>
     <servlet-name>springMVC</servlet-name>
@@ -160,7 +160,7 @@ SpringMVC是Spring为表述层开发提供的一整套完整的开发，三层�
 
 请求控制器中每一个处理请求的方法为控制器方法。控制器由普通的java类担任，需要通过注解@Controller将其标识为一个控制层组件（还需要组件的扫描，就是创建一个对象使用的），交给Spring的IOC容器管理，这样SpringMVC才能够识别控制器的存在
 
-```
+```java
 @Controller
 public class HelloController {
     
@@ -171,7 +171,7 @@ public class HelloController {
 
 在resource创建
 
-```
+```xml
 <!--组件扫描-->
 <context:component-scan base-package="com.hua.mvc.controller"></context:component-scan>
 
@@ -202,7 +202,7 @@ public class HelloController {
 
 * 创建处理请求的方法，实现对首页的访问
 
-```
+```java
     //处理前端控制器中的“/“请求的方法
     @RequestMapping(value = "/")//请求映射：将当前请求与控制器方法创建映射关系
     public String index(){
@@ -215,7 +215,7 @@ public class HelloController {
 
   * index.html中设置超链接
 
-  ```
+  ```xml
   <!DOCTYPE html>
   <html lang="en" xmlns:th="http://www.thymeleaf.org">
   <head>
@@ -233,7 +233,7 @@ public class HelloController {
 
   * 请求控制器中处理请求
 
-  ```
+  ```java
   @RequestMapping("/target")
   public String toTarget(){
       return "target";
@@ -252,7 +252,7 @@ public class HelloController {
 
 ​		②  新建一个maven，在main下新建一个webapp，Project Structure ——> Modules ——> 选择maven，新建一个web（记得改路径到webapp）
 
-​		③  配置前端控制器web.xml
+​		③  配置前端控制器web.xml(配置前端控制器)
 
 ​		④  在resource下创建springMVC配置文件，并配置信息
 
@@ -270,7 +270,7 @@ public class HelloController {
 
 @RequestMapping标识一个方法：设置映射请求的请求路径的具体信息
 
-```
+```java
 @Controller
 @RequestMapping("/hello")
 public class RequestMappingController {
@@ -281,7 +281,7 @@ public class RequestMappingController {
 }
 ```
 
-```
+```xml
 <a th:href="@{/hello/testRequestMapping}">测试RequestMapping注解的位置</a>
 ```
 
@@ -302,7 +302,7 @@ public class RequestMappingController {
   }
   ```
 
-  ```
+  ```xml
   <a th:href="@{/hello/testRequestMapping}">测试RequestMapping注解的位置</a><br/>
   <a th:href="@{/hello/test}">测试test注解的位置</a></br>
   ```
@@ -311,7 +311,7 @@ public class RequestMappingController {
 
 * @RequestMapping注解的method属性是一个数组，表示该映射能够匹配多种请求的方式。首先请求必须满足value属性，然后才必须满足method属性，如果不满足method属性，则会报405
 
-```
+```java
 @Controller
 @RequestMapping("/hello")
 public class RequestMappingController {
@@ -325,7 +325,7 @@ public class RequestMappingController {
 }
 ```
 
-```
+```xml
 <h1>首页</h1>
 <a th:href="@{/hello/testRequestMapping}">测试RequestMapping注解的位置</a><br/>
 <a th:href="@{/hello/test}">测试test注解的位置:get属性</a></br>
@@ -346,7 +346,7 @@ public class RequestMappingController {
 
 处理delete请求的映射-->@DeleteMapping
 
-```
+```java
 @GetMapping("/testGetMapping")//method必须是get
 public String testGetMapping(){
     return "success";
@@ -354,6 +354,8 @@ public String testGetMapping(){
 ```
 
 2、目前浏览器只支持get和post，如果是put和delete，则默认按get处理
+
+
 
 ## 5、RequestMapping注解的params属性（了解）
 
@@ -364,7 +366,7 @@ public String testGetMapping(){
   * "param=value"：要求请求映射所匹配的请求必须携带param请求参数且param=value
   * "param!=value"：要求请求映射所匹配的请求必须携带param请求参数但是param!=value
 
-```
+```java
 @RequestMapping(value = "/testParamsAndHeaders",
                 params = {"username","password=123456"}//必须同时匹配
 )
@@ -373,7 +375,7 @@ public String teatParamsAndHeaders(){
 }
 ```
 
-```
+```xml
 <a th:href="@{/hello/testParamsAndHeaders(username='admin',password=123456)}">测试RequestMapping注解的params属性</a>
 ```
 
@@ -399,40 +401,40 @@ public String teatParamsAndHeaders(){
 
 * ？：表示任意单个字符（特殊符号不能匹配：？、/）
 
-```
+```java
 @RequestMapping("/a?a/testAnt")
 public String testAnt(){
     return "success";
 }
 ```
 
-```
+```xml
 <a th:href="@{/hello/aba/testAnt}" >测试Ant风格的路径——测试使用？</a></br>
 ```
 
 * *：表示任意的0个或多个字符
 
-```
+```java
 @RequestMapping("/a*a/testAnt")
 public String testAnt(){
     return "success";
 }
 ```
 
-```
+```xml
 <a th:href="@{/hello/ahduisahduiaa/testAnt}" >测试Ant风格的路径——测试使用*</a></br>
 ```
 
 * **：表示任意的一层或多层目录（用/表示一层一层的目录），只能单独的写在两个/中
 
-```
+```java
 @RequestMapping("/**/testAnt")
 public String testAnt(){
     return "success";
 }
 ```
 
-```
+```xml
 <a th:href="@{/hello/a/a/testAnt}" >测试Ant风格的路径——测试使用**</a></br>
 ```
 
@@ -444,7 +446,7 @@ rest方式：/deleteUser/1
 
 SpringMVC路径中的占位符常用于restful风格中，当请求路径中**将某些数据通过路径的方式传到服务器**，就可以在相应的@RequestMapping注解的value属性中通过占位符传输数据，再通过@PathVariable注解将占位符所表示的数据赋值给形参
 
-```
+```java
 @RequestMapping("/testPath/{id}")
 public String testPath(@PathVariable("id")Integer id){//将占位符中的id赋值给形参
     System.out.println("id:" + id);
@@ -452,7 +454,7 @@ public String testPath(@PathVariable("id")Integer id){//将占位符中的id赋�
 }
 ```
 
-```
+```xml
 <a th:href="@{/hello/testPath/1}" >支持路径中的占位符——testPath</a></br>
 ```
 
@@ -462,7 +464,7 @@ public String testPath(@PathVariable("id")Integer id){//将占位符中的id赋�
 
 将HttpServletRequest作为控制器方法的形参，此时HttpServletRequest类型的参数表示封装了当前请求的报文对象
 
-```
+```java
 @RequestMapping("/testServletAPI")
 //形参位置的request表示当前请求
 public String testServletAPI(HttpServletRequest request){
@@ -473,7 +475,7 @@ public String testServletAPI(HttpServletRequest request){
 }
 ```
 
-```
+```xml
 <a th:href="@{/testServletAPI(username='admin',password=123456)}">测试使用ServletAPI获取请求参数</a>
 ```
 
@@ -481,7 +483,7 @@ public String testServletAPI(HttpServletRequest request){
 
 在控制器方法的形参位置，**设置和请求参数同名的形参**，当浏览器发送请求，匹配请求映射，在前端控制器DispatcherServlet中就会将请求参数赋值给相应的形参
 
-```
+```xml
 <form th:action="@{/testParam}" method="post">
         用户名：<input type="text" name="username"><br/>
         密 码：<input type="password" name="password"><br/>
@@ -492,8 +494,8 @@ public String testServletAPI(HttpServletRequest request){
 </form>
 ```
 
-```
-@RequestMapping("testParam")
+```java
+@RequestMapping("/testParam")
 public String testParam(String username,String password,String[] hobby){
     //若请求参数中出现多个同名的请求参数，可以在控制方法的形参位置设置字符串类型或字符串数组，接受此请求参数
     //若使用字符串类型的形参，最终结果为请求参数的每一个值之间使用逗号进行拼接
@@ -516,7 +518,7 @@ public String testParam(String username,String password,String[] hobby){
 
   * defaultValue：不管required属性值为true或false，当value所指定的请求参数没有传输或传输的值为""时，则使用默认值为形参赋值
 
-```
+```java
 @RequestParam(value = "user_name",required = false,defaultValue = "hehe") String username,//形参与请求参数名字不一样时，通过注解解决
 ```
 
@@ -525,7 +527,7 @@ public String testParam(String username,String password,String[] hobby){
 * @RequestHeader是将请求头信息和控制器方法的形参创建映射关系
 * 注解一共有三个属性：value，required，defaultValue，用法同上
 
-```
+```java
 @RequestHeader(value = "Host",required = false,defaultValue = "wahaha") String host
 ```
 
@@ -538,7 +540,7 @@ public String testParam(String username,String password,String[] hobby){
 
 可以在控制器方法的形参位置设置一个实体类类型的形参，此时若浏览器传输的请求参数的参数名与实体类中的属性名一直，那么请求参数就会为此属性赋值
 
-```
+```xml
 <form th:action="@{/testBean}" method="post">
     用户名：<input type="text" name="username"><br>
     密码：<input type="password" name="password"><br>
@@ -549,7 +551,7 @@ public String testParam(String username,String password,String[] hobby){
 </form>
 ```
 
-```
+```java
 @RequestMapping("/testBean")
 public String testBean(User user){
     System.out.println(user);
@@ -557,7 +559,7 @@ public String testBean(User user){
 }
 ```
 
-```
+```java
 public class User {
     private Integer id;
     private String username;
@@ -629,7 +631,7 @@ public class User {
 
 解决获取请求参数的乱码问题，在web.xml中进行注册
 
-```
+```xml
 <!--解决乱码-->
     <filter>
         <filter-name>CharacterEncodingFilter</filter-name>
@@ -649,11 +651,11 @@ public class User {
 
 ## 1、使用servletAPI向request域对象共享数据
 
-```
+```xml
 <a th:href="@{/testRequestByServlet}">通过ServletAPI向request域对象共享数据</a>
 ```
 
-```
+```java
 //使用ServletAPI向request域对象共享数据
 @RequestMapping("/testRequestByServlet")
 public String testRequestByServlet(HttpServletRequest request){
@@ -662,7 +664,7 @@ public String testRequestByServlet(HttpServletRequest request){
 }
 ```
 
-```
+```xml
 success<br/>
 <p th:text="${testRequestScope}"></p>
 ```
@@ -673,15 +675,15 @@ success<br/>
   * 向request域对象添加数据
   * 设置视图的名称
 
-```
+```xml
 <a th:href="@{/testModelAndView}">通过testModelAndView向request域对象共享数据</a><br/>
 ```
 
-```
+```java
 @RequestMapping("/testModelAndView")
 public ModelAndView testModelAndView(){//ModelAndView有两个功能：第一个Model，设置数据；第二个View，设置视图
     ModelAndView mav = new ModelAndView();
-    //处理模型数据，即向请求域request共享数据
+    //处理模型数据，即向请求域request共享数据,第一个是键，第二个是值
     mav.addObject("testRequestScope","hello,ModelAndView");
     //设置视图名称
     mav.setViewName("success");
@@ -691,11 +693,11 @@ public ModelAndView testModelAndView(){//ModelAndView有两个功能：第一个
 
 ## 3、使用Model向request域对象共享数据
 
-```
+```xml
 <a th:href="@{/testModel}">通过Model向request域对象共享数据</a><br/>
 ```
 
-```
+```java
 @RequestMapping("/testModel")
 public String testModel(Model model){
     model.addAttribute("testRequestScope","hello,model");
@@ -705,11 +707,11 @@ public String testModel(Model model){
 
 ## 4、使用Map向request域对象共享数据
 
-```
+```xml
 <a th:href="@{/testMap}">通过Map向request域对象共享数据</a><br/>
 ```
 
-```
+```java
 @RequestMapping("/testMap")
 public String testMap(Map<String,Object> map){
     map.put("testRequestScope","hello,map");
@@ -719,11 +721,11 @@ public String testMap(Map<String,Object> map){
 
 ## 5、使用ModelMap向request域对象中共享数据
 
-```
+```xml
 <a th:href="@{/testModelMap}">通过ModelMap向request域对象共享数据</a><br/>
 ```
 
-```
+```java
 @RequestMapping("/testModelMap")
 public String testModelMap(ModelMap modelMap){
     modelMap.addAttribute("testRequestScope","hello,modelMap");
@@ -737,7 +739,7 @@ Model、ModelMap、Map类型的参数本质上都是BindingAwareModelMap类型�
 
 ## 7、向Session域共享数据
 
-```
+```java
 @RequestMapping("/testSession")
 public String testSession(HttpSession session){
     session.setAttribute("testSessionScope","hello,session");
@@ -745,17 +747,17 @@ public String testSession(HttpSession session){
 }
 ```
 
-```
+```xml
 <a th:href="@{/testSession}">通过ServletAPI向session域对象共享数据</a><br/>
 ```
 
-```
+```xml
 <p th:text="${session.testSessionScope}"></p>
 ```
 
 ## 8、向applictaion域共享数据
 
-```
+```java
 @RequestMapping("/testApplication")
 public String testApplication(HttpSession session){
     ServletContext application = session.getServletContext();
@@ -764,11 +766,11 @@ public String testApplication(HttpSession session){
 }
 ```
 
-```
+```xml
 <a th:href="@{/testApplication}">通过ServletAPI向application域对象共享数据</a><br/>
 ```
 
-```
+```xml
 <p th:text="${application.testApplication}"></p>
 ```
 
@@ -784,7 +786,7 @@ public String testApplication(HttpSession session){
 
 当控制器方法中所设置的视图名称没有任何前缀时，此时的视图名称会被SpringMVC配置文件中所配置的视图解析器解析，视图名称拼接视图前缀和视图后缀所得到的最终路径，会通过转发的方式实现跳转
 
-```
+```java
 @RequestMapping("/testThymeleafView")
 public String testThymeleafView(){
     return "success";
@@ -799,7 +801,7 @@ SpringMVC创建转发视图的情况：
 
 当控制器方法中所设置的视图名称以“forward：”为前缀时，创建InternalResourceView视图，此时的视图名称不会被ThymeleafView解析器解析，而是会将前缀“forward：”去掉，剩余部分作为最终的路径通过转发的方式实现跳转
 
-```
+```java
 @RequestMapping("/testThymeleafView")
 public String testThymeleafView(){
     return "success";
@@ -819,7 +821,7 @@ SpringMVC中默认的重定向视图是RedirectView
 
 转发和重定向区别：转发是浏览器发送一次请求(服务器内部跳转一次，但是浏览器中的地址栏不发生变化)。重定向是浏览器发送两次请求，第一次访问Servlet，第二次访问重定向的地址（浏览器地址栏中的地址发生变化）。转发可以获取请求域中的数据，重定向不可以，因为转发是一次请求，用到的request是同一个。转发可以访问WEB-INF中的资源，但是重定向不可以，因为WEB-INF下的内容具有安全性，只能通过服务器内部进行访问。
 
-```
+```java
 @RequestMapping("/testThymeleafView")
 public String testThymeleafView(){
     return "success";
@@ -847,7 +849,7 @@ public String testRedirect(){
 //    }
 ```
 
-```
+```java
 <!--
     path:设置处理的请求地址
     view-name：设置请求地址对应的视图名称
@@ -855,7 +857,7 @@ public String testRedirect(){
 <mvc:view-controller path="/" view-name="index"></mvc:view-controller>//这一行代码实现的是上一段代码块的功能
 ```
 
-```
+```xml
 <!--开启mvc的注解驱动，不开启的话index里面的链接全部失效-->
 <mvc:annotation-driven/>
 ```
@@ -864,7 +866,7 @@ public String testRedirect(){
 
 在视图使用的是jsp时，变化的地方：springMVC的配置，不再使用ThymeleafView进行配置
 
-```
+```xml
 <!--扫描组件-->
 <context:component-scan base-package="com.hua.mvc.controller"></context:component-scan>
 
@@ -879,7 +881,7 @@ public String testRedirect(){
 
 在写href时也有变化
 
-```
+```xml
 <body>
     <h1>首页</h1>
     <a href="${pageContext.request.contextPath}/success">success.jsp</a>
@@ -912,7 +914,7 @@ REST风格提倡URL地址使用统一的风格设计，从前到后各个单词�
 
   * 查询所有用户的信息
 
-    ```
+    ```java
     @RequestMapping(
             value = "/user",
             method = {RequestMethod.GET}
@@ -923,13 +925,13 @@ REST风格提倡URL地址使用统一的风格设计，从前到后各个单词�
     }
     ```
 
-    ```
+    ```xml
     <a th:href="@{/user}">查询所有用户信息</a><br/>//默认是get请求
     ```
 
   * 根据id查询用户信息
 
-    ```
+    ```java
     @RequestMapping(value = "/user/{id}",method = RequestMethod.GET)
     public String getUserById(){
         System.out.println("根据id查询用户信息");
@@ -937,13 +939,13 @@ REST风格提倡URL地址使用统一的风格设计，从前到后各个单词�
     }
     ```
 
-    ```
+    ```xml
     <a th:href="@{/user/1}">根据id查询用户信息</a><br/>
     ```
 
 * post请求
 
-  ```
+  ```java
   @RequestMapping(value = "/user",method = RequestMethod.POST)
   public String insertUser(String username,String password){
       System.out.println("添加用户信息：" + username + "," + password);
@@ -951,7 +953,7 @@ REST风格提倡URL地址使用统一的风格设计，从前到后各个单词�
   }
   ```
 
-  ```
+  ```xml
   <form th:action="@{/user}" method="post">
       用户名：<input type="text" name="username"><br/>
       密 码：<input type="password" name="password"><br/>
@@ -963,7 +965,7 @@ REST风格提倡URL地址使用统一的风格设计，从前到后各个单词�
 
 要先配置HiddenHttpMethodFilter，以供put和delete功能的实现，在web.xml中进行配置，要在配置编码过滤器之后，不然还会出现乱码
 
-```
+```xml
 <!--配置HiddenHttpMethodFilter-->
 <filter>
     <filter-name>HiddenHttpMethodFilter</filter-name>
@@ -975,7 +977,7 @@ REST风格提倡URL地址使用统一的风格设计，从前到后各个单词�
 </filter-mapping>
 ```
 
-```
+```java
 @RequestMapping(value = "/user",method = RequestMethod.PUT)
 public String updateUser(String username,String password){
     System.out.println("修改用户信息：" + username + "," + password);
@@ -983,7 +985,7 @@ public String updateUser(String username,String password){
 }
 ```
 
-```
+```xml
 <!--
     method写的不是post和get，默认按照get来处理
     修改用户信息
@@ -1002,7 +1004,7 @@ public String updateUser(String username,String password){
 
 * 1、创建一个maven，并配置maven的环境
 
-  ```
+  ```xml
   <!--打包方式-->
   <packaging>war</packaging>
   <!--添加依赖-->
@@ -1040,7 +1042,7 @@ public String updateUser(String username,String password){
 
 * 2、在src\main下创建一个model：webapp，project strcture下创建一个web.xml
 
-  ```
+  ```xml
    <!--
       配置编码过滤器,设置编码之前不能获取任何的请求参数，所以配置编码过滤器要在配置HiddenHttpMethodFilter之前
   -->
@@ -1089,7 +1091,7 @@ public String updateUser(String username,String password){
 
 * 3、在resources下创建一个springMVC.xml
 
-  ```
+  ```xml
   <!--扫描组件-->
   <context:component-scan base-package="com.hua.rest"></context:component-scan>
   
@@ -1123,7 +1125,7 @@ public String updateUser(String username,String password){
 
 ​		employee类
 
-```
+```java
 public class Employee {
     private Integer id;
     private String lastName;
@@ -1178,7 +1180,7 @@ public class Employee {
 
 * 2、dao包
 
-```
+```java
 @Repository
 public class EmployeeDao {
     private static Map<Integer, Employee> employees = null;
@@ -1232,14 +1234,14 @@ public class EmployeeDao {
 
 * 1、在springMVC中配置
 
-```
+```xml
 <!--配置访问首页-->
 <mvc:view-controller path="/" view-name="index"></mvc:view-controller>
 ```
 
 * 2、创建首页界面：index.heml界面
 
-```
+```xml
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -1257,7 +1259,7 @@ public class EmployeeDao {
 
 * 控制器方法
 
-```
+```java
 //查询全部数据
 @RequestMapping(value = "/employee",method = {RequestMethod.GET})
 public String getAllEmployee(Model model){
@@ -1269,7 +1271,7 @@ public String getAllEmployee(Model model){
 
 * 创建显示数据页面
 
-```
+```xml
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -1309,7 +1311,7 @@ public String getAllEmployee(Model model){
 
 * 创建处理delete请求方式的表单
 
-```
+```xml
 <!-- 作用：通过超链接控制表单的提交，将post请求转换为delete请求 -->
 <form id="delete_form" method="post">
     <!-- HiddenHttpMethodFilter要求：必须传输_method请求参数，并且值为最终的请求方式 -->
@@ -1321,19 +1323,19 @@ public String getAllEmployee(Model model){
 
 ​		引入vue.js
 
-```
+```xml
 <script type="text/javascript" th:src="@{/static/js/vue.js}"></script>
 ```
 
 ​		删除超链接
 
-```
+```xml
 <a class="deleteA" @click="deleteEmployee" th:href="@{'/employee/'+${employee.id}}">delete</a>
 ```
 
 ​		通过vue处理点击事件
 
-```
+```xml
 <script type="text/javascript">
     var vue = new Vue({
         el:"#dataTable",
@@ -1356,7 +1358,7 @@ public String getAllEmployee(Model model){
 
 * 控制器方法
 
-```
+```java
 @RequestMapping(value = "/employee/{id}", method = RequestMethod.DELETE)
 public String deleteEmployee(@PathVariable("id") Integer id){
     employeeDao.delete(id);
@@ -1368,13 +1370,13 @@ public String deleteEmployee(@PathVariable("id") Integer id){
 
 * 配置跳转
 
-```
+```xml
 <mvc:view-controller path="/toAdd" view-name="employee_add"></mvc:view-controller>
 ```
 
 * 创建employee_add
 
-```
+```xml
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -1399,7 +1401,7 @@ public String deleteEmployee(@PathVariable("id") Integer id){
 
 * 控制器方法
 
-```
+```java
 @RequestMapping(value = "/employee", method = RequestMethod.POST)
 public String addEmployee(Employee employee){
     employeeDao.save(employee);
@@ -1411,13 +1413,13 @@ public String addEmployee(Employee employee){
 
 * 修改超链接
 
-```
+```xml
 <a th:href="@{'/employee/'+${employee.id}}">update</a>
 ```
 
 * 控制器方法
 
-```
+```java
 @RequestMapping(value = "/employee/{id}", method = RequestMethod.GET)
 public String getEmployeeById(@PathVariable("id") Integer id, Model model){
     Employee employee = employeeDao.get(id);
@@ -1428,7 +1430,7 @@ public String getEmployeeById(@PathVariable("id") Integer id, Model model){
 
 * 创建employee_update.html
 
-```
+```xml
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -1459,7 +1461,7 @@ public String getEmployeeById(@PathVariable("id") Integer id, Model model){
 
 * 控制器方法
 
-```
+```java
 @RequestMapping(value = "/employee", method = RequestMethod.PUT)
 public String updateEmployee(Employee employee){
     employeeDao.save(employee);
@@ -1476,7 +1478,7 @@ public String updateEmployee(Employee employee){
 
 @RequestBody是注解，可以获取**请求体**，需要在控制器方法中设置一个形参，使用@RequestBody进行标识，当前请求的请求体就会为当前注解所标识的形参赋值
 
-```
+```java
 @RequestMapping(value = "/testRequestBody")
 public String testRuquestBody(@RequestBody String requestBody){
     System.out.println("requestBody:" + requestBody);
@@ -1484,7 +1486,7 @@ public String testRuquestBody(@RequestBody String requestBody){
 }
 ```
 
-```
+```xml
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -1508,7 +1510,7 @@ public String testRuquestBody(@RequestBody String requestBody){
 
 RequestEntity是类型，可以获取请求报文的信息，分为请求头和请求体（只有post才有请求头和请求体）
 
-```
+```java
 @RequestMapping("/testRequestEntity")
 public String testRuquestEntity(RequestEntity<String> requestEntity){
     //requestEntity表示整个请求报文的信息
@@ -1518,7 +1520,7 @@ public String testRuquestEntity(RequestEntity<String> requestEntity){
 }
 ```
 
-```
+```xml
 <form th:action="@{/testRequestEntity}" method="post">
     <input type="text" name="username"><br/>
     <input type="password" name="password"><br/>
@@ -1530,7 +1532,7 @@ public String testRuquestEntity(RequestEntity<String> requestEntity){
 
 ResponseBody可以响应浏览器的请求
 
-```
+```java
 @RequestMapping("/testResponse")
 public void testResponce(HttpServletResponse response) throws IOException {
     response.getWriter().write("hello,response");
@@ -1544,7 +1546,7 @@ public String testResponseBody(){
 }
 ```
 
-```
+```xml
 <a th:href="@{/testResponse}">通过servletAPI的response对象响应浏览器的数据</a><br/>
 
 <a th:href="@{/testResponseBody}">通过@ResponseBody响应浏览器的数据</a><br/>
@@ -1556,7 +1558,7 @@ public String testResponseBody(){
 
 1、导入json的依赖
 
-```
+```xml
 <dependency>
     <groupId>com.fasterxml.jackson.core</groupId>
     <artifactId>jackson-databind</artifactId>
@@ -1566,7 +1568,7 @@ public String testResponseBody(){
 
 2、在springMVC中开启mvc注解驱动，此时在HandlerAdaptor中会自动装配一个消息转换器，可以将响应到浏览器的java对象转换为json格式
 
-```
+```xml
 <mvc:annotation-driven/>
 ```
 
@@ -1574,7 +1576,7 @@ public String testResponseBody(){
 
 4、将java对象直接作为控制器方法的返回值返回，就会自动转换为json格式的字符串
 
-```
+```java
 @RequestMapping("/testReaponseUser")
 @ResponseBody
 public User testReaponseUser(){
@@ -1598,7 +1600,7 @@ ResponseEntity用于控制器方法的返回值类型，该控制器方法的返
 
 使用ResponseEntity实现文件下载的功能
 
-```
+```java
 @RequestMapping("/testDown")
 public ResponseEntity<byte[]> testResponseEntity(HttpSession session) throws IOException {
     //获取ServletContext对象
@@ -1627,7 +1629,7 @@ public ResponseEntity<byte[]> testResponseEntity(HttpSession session) throws IOE
 }
 ```
 
-```
+```xml
 <a th:href="@{testDown}">下载picture</a>
 ```
 
@@ -1641,7 +1643,7 @@ SpringMVC中将上传的文件封装到MultipartFile对象中，通过此对象�
 
 1、添加依赖
 
-```
+```xml
 <dependency>
     <groupId>commons-fileupload</groupId>
     <artifactId>commons-fileupload</artifactId>
@@ -1651,14 +1653,14 @@ SpringMVC中将上传的文件封装到MultipartFile对象中，通过此对象�
 
 2、在SpringMVC的配置文件中添加配置
 
-```
+```xml
 <!--必须通过文件解析器的解析才能将文件转换为MultipartFile对象-->
 <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"></bean>
 ```
 
 3、控制器方法
 
-```
+```java
     @RequestMapping("/testUp")
     public String testUp(MultipartFile photo,HttpSession session) throws IOException {
 //        System.out.println(photo.getName());//获取当前表单元素的name属性值
@@ -1683,7 +1685,7 @@ SpringMVC中将上传的文件封装到MultipartFile对象中，通过此对象�
 
 使用UUID解决文件重名的问题
 
-```
+```java
  @RequestMapping("/testUp")
     public String testUp(MultipartFile photo,HttpSession session) throws IOException {
 //        System.out.println(photo.getName());//获取当前表单元素的name属性值
@@ -1725,7 +1727,7 @@ SpringMVC中的拦截器需要实现HandlerInterception
 
 SpringMVC的拦截器必须在SpringMVC的配置文件中进行配置
 
-```
+```xml
 <!--
     配置拦截器
 -->
@@ -1767,27 +1769,245 @@ preHandle会按照配置的顺序执行，而postHandle和afterComplation会按�
 
 preHandle返回false和它之前的拦截器的preHandle都会执行，postHandle都不执行，返回false的拦截器之前的拦截器的afterComplation都会执行
 
+# 十二、异常处理器
+
+##  1、基于配置的异常处理
+
+SpringMVC提供一个处理控制器方法执行过程中所出现的异常的接口：HandlerExceptionResolver
+
+HandlerExceptionResolver接口实现的类有：DefaultHandlerException和SimpleMappingExceptionResolver
+
+SpringMVC提供自定义的异常处理器SimpleMappingExceptionResolver，使用方式：
+
+```xml
+<!--配置异常处理-->
+<bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+    <property name="exceptionMappings">
+        <props>
+            <!--出现数学错误，就跳转到error界面-->
+            <prop key="java.lang.ArithmeticException">error</prop>
+        </props>
+    </property>
+    <!--将异常信息共享在请求域中的键，以value的值为键，以异常为值-->
+    <property name="exceptionAttribute" value="ex"></property>
+</bean>
+```
+
+```java
+ @RequestMapping("/testExceptionHandler")
+    public String testExceptionHandler(){
+        System.out.println(1 / 0);
+        return "success";
+    }
+```
+
+error页面
+
+```xml
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+出现错误
+<p th:text="${ex}"></p>
+</body>
+</html>
+```
+
+## 2、基于注解的异常处理
+
+```java
+@ControllerAdvice //此注解包括了Controller注解
+public class ExceptionController {
+    //当出现这两个异常的时候
+    @ExceptionHandler(value = {ArithmeticException.class,NullPointerException.class})//括号内的值表示异常
+    public String testException(Exception ex, Model model){//形参表示当前出现的异常
+        model.addAttribute("ex",ex);
+        //当出现上面指定的异常的时候，就执行下面的
+        return "error";
+
+    }
+}
+```
+
+```java
+@RequestMapping("/testExceptionHandler")
+public String testExceptionHandler(){
+    System.out.println(1 / 0);//出现时就会去执行上面的代码
+    return "success";
+}
+```
+
+```xml
+<a th:href="@{/testExceptionHandler}">测试异常处理</a>
+```
+
+异常跳转界面
+
+```xml
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+出现错误
+<p th:text="${ex}"></p>
+</body>
+</html>
+```
+
+# 十三、注解配置SpringMVC
+
+使用配置类和注解代替web.xml和SpringMVC配置文件的功能,每当启动Tomcat服务器，第一个启动的就是web.xml
+
+## 1、创建初始化类，代替web.xml
+
+在Servlet3.0中，容器会在类路径中查找实现javax.servlet.ServletContainerinitializer接口的类，如果找到的话就用它来配置Servlet容器（就是Tomcat服务器）
+
+Spring提供了这个接口的实现，名为SpringServletContainerInitializer，这个类反过来又会查找实现WebApplicationInitializer的类并将配置的任务交给它们来完成。Spring3.2引入了一个便利的WebApplicationInitializer基础实现，名为AbstractAnnotationConfigDispatcherServletInitializer，当我们的类扩展了AbstractAnnotationConfigDispatcherServletInitializer并将其部署到Servlet3.0容器的时候，容器会自动发现它，并用它来配置Servlet上下文。
+
+```java
+ 	//只从spring的配置类
+    protected Class<?>[] getRootConfigClasses() {
+        return new Class[]{SpringConfig.class};
+    }
+
+    //指定springMVC的配置类
+    protected Class<?>[] getServletConfigClasses() {
+        return new Class[]{WebConfig.class};
+    }
+
+    //指定DispatcherServlet的映射路径,就是url- pattern
+    protected String[] getServletMappings() {
+        return new String[]{"/"};
+    }
+
+    //注册过滤器
+    @Override
+    protected Filter[] getServletFilters() {
+        CharacterEncodingFilter characterEncodingFilter = new CharacterEncodingFilter();
+        characterEncodingFilter.setEncoding("UTF-8");
+        characterEncodingFilter.setForceResponseEncoding(true);
+        HiddenHttpMethodFilter hiddenHttpMethodFilter = new HiddenHttpMethodFilter();
+        return new Filter[]{characterEncodingFilter,hiddenHttpMethodFilter};
+    }
+```
+
+##  2、创建SpringConfig配置类，代替Spring配置文件
+
+```java
+@Configuration
+public class SpringConfig {
+	//ssm整合之后，spring的配置信息写在此类中
+}
+```
+
+## 3、创建WebConfig配置类，代替SpringMVC的配置文件
+
+```java
+/**
+ * 代替SpringMVC的配置文件:
+ * 1、扫描组件
+ * 2、视图解析器
+ * 3、view-controller
+ * 4、default-servlet-handler 静态资源处理器
+ * 5、mvc                     注解驱动
+ * 6、文件上传解析器
+ * 7、异常处理
+ * 8、拦截器
+ */
+//将当前类标识为一个配置类
+@Configuration
+
+//1、组件扫描
+@ComponentScan("com.hua.mvc.controller")//设置组件扫描的范围
+
+//5、开启MVC的注解驱动
+@EnableWebMvc
+
+public class WebConfig implements WebMvcConfigurer {
 
 
 
+    // 4、default-servlet-handler
+    public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+        configurer.enable();
+    }
 
+    //8、拦截器
+    public void addInterceptors(InterceptorRegistry registry) {
+        TestInterceptor testInterceptor = new TestInterceptor();
+        //添加拦截路径
+        registry.addInterceptor(testInterceptor).addPathPatterns("/**");
 
+        //添加排除的路径
+//      registry.addInterceptor(testInterceptor).excludePathPatterns("/**");
+    }
 
+    //3、view-controller
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/hello").setViewName("hello");
+    }
 
+    //6、文件上传解析器
+    @Bean
+    public MultipartResolver multipartResolver(){
+        CommonsMultipartResolver commonsMultipartResolver = new CommonsMultipartResolver();
+        return commonsMultipartResolver;
+    }
 
+    //7、异常处理
+    public void configureHandlerExceptionResolvers(List<HandlerExceptionResolver> resolvers) {
+        SimpleMappingExceptionResolver simpleMappingExceptionResolver = new SimpleMappingExceptionResolver();
+        //Properties是键值对
+        Properties prop = new Properties();
+        prop.setProperty("java.1ang.ArithmeticException","error");
+        //异常映射
+        simpleMappingExceptionResolver.setExceptionMappings(prop);
+        //设置当前在请求域中共享异常的键
+        simpleMappingExceptionResolver.setExceptionAttribute("exception");
+        resolvers.add(simpleMappingExceptionResolver);
+    }
 
+    //2、配置视图解析器
+    //配置生成模板解析器
+    @Bean//动态获取一个bean对象
+    public ITemplateResolver templateResolver() {
+        WebApplicationContext webApplicationContext = ContextLoader.getCurrentWebApplicationContext();
+        // ServletContextTemplateResolver需要一个ServletContext作为构造参数，可通过WebApplicationContext 的方法获得
+        ServletContextTemplateResolver templateResolver = new ServletContextTemplateResolver(
+                webApplicationContext.getServletContext());
+        templateResolver.setPrefix("/WEB-INF/templates/");
+        templateResolver.setSuffix(".html");
+        templateResolver.setCharacterEncoding("UTF-8");
+        templateResolver.setTemplateMode(TemplateMode.HTML);
+        return templateResolver;
+    }
 
+    //生成模板引擎并为模板引擎注入模板解析器
+    @Bean
+    public SpringTemplateEngine templateEngine(ITemplateResolver templateResolver) {
+        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
+        templateEngine.setTemplateResolver(templateResolver);
+        return templateEngine;
+    }
 
+    //生成视图解析器并未解析器注入模板引擎
+    @Bean
+    public ViewResolver viewResolver(SpringTemplateEngine templateEngine) {
+        ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
+        viewResolver.setCharacterEncoding("UTF-8");
+        viewResolver.setTemplateEngine(templateEngine);
+        return viewResolver;
+    }
 
-
-
-
-
-
-
-
-
-
+}
+```
 
 
 
