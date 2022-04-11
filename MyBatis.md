@@ -144,3 +144,9 @@ public interface UserMapper {
    MyBatis映射文件用于编写SQL，访问以及操作表中的数据
 
    MyBatis映射文件存放的位置：src\main\resource\mappers目录下
+
+
+
+
+
+hhh
