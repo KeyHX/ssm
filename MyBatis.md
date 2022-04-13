@@ -121,7 +121,7 @@ public interface UserMapper {
 
 ## 4、创建MyBatis的映射文件
 
-相关概念：ORM对象关系映射
+相关概念：ORM    对象关系映射
 
 * 对象：Java的实体类对象
 * 关系：关系型数据库
@@ -427,7 +427,7 @@ public void testDelete() throws IOException {
 
 ### 4、查询
 
-注意：在所有的查询的接口配置文件中需要添加属性resultType或resultMap
+**注意：在所有的查询的接口配置文件中需要添加属性resultType或resultMap**
 
 #### 1、根据id查
 
@@ -828,7 +828,7 @@ ${} 的本质就是字符串的拼接，#{} 的本质就是占位符赋值
 
 ${}使用字符串的方式拼接sql，若为字符串类型或者日期类型的字段进行赋值时，需要手动加单引号
 
-#{}使用占位符的方式拼接sql，此时为字符串类型或者日期类型的字段进行赋值时，可以自动添加单引号
+#{}使用占位符的方式拼接sql，此时为字符串类型或者日期类型的字段进行赋值时，可以**自动添加单引号**
 
 ### 1、单个字面量类型的参数
 
@@ -851,7 +851,7 @@ User getUserByUername(String username);
 <!--User getUserByUername(String username)-->
 <select id="getUserByUername" resultType="User">
     <!--select * from t_user where username = #{username}-->
-    select * from t_user where username = '${username}'
+    select * from t_user w9ere username = '${username}'
 </select>
 ```
 
@@ -1027,3 +1027,971 @@ public void testCheckLoginByParam(){
     System.out.println(user);
 }
 ```
+
+## 六、MyBatis各种查询功能
+
+### 1、查询一个实体类对象
+
+若查询出的数据只有一条
+* a>可以通过实体类对象接收
+* b>可以通过list集合接收
+* c>可以通过map集合接收
+
+接口代码
+
+```java
+/**
+ * 根据id查询用户信息
+ */
+User getUserById(@Param("ID") Integer id);
+```
+
+接口配置文件代码
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.SelectMapper">
+    <!--User getUserById()-->
+    <select id="getUserById" resultType="User">
+        select * from t_user where id = #{ID}
+    </select>
+</mapper>
+```
+
+测试类
+
+```java
+@Test
+public void testgetUserById(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SelectMapper mapper = sqlSession.getMapper(SelectMapper.class);
+    User user = mapper.getUserById(7);
+    System.out.println(user);
+}
+```
+
+### 2、查询一个list集合
+
+查询的数据有多条
+
+a>可以通过list集合接收
+
+b>可以通过map类型的list集合接收
+
+接口代码
+
+```java
+/**
+ * 查询所有数据
+ */
+List<User> getAllUser();
+```
+
+接口配置文件代码
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.SelectMapper">
+    <!--List<User> getAllUser()-->
+    <select id="getAllUser" resultType="User">
+        select * from t_user
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+@Test
+public void testgetAllUser(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SelectMapper mapper = sqlSession.getMapper(SelectMapper.class);
+    List<User> user = mapper.getAllUser();
+    for (User i : user){
+        System.out.println(i);
+    }
+}
+```
+
+### 3、查询单个数据
+
+接口代码
+
+```java
+/**
+ * 查询用户信息的总记录数
+ */
+Integer getAllNumbers();
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.SelectMapper">
+	<!--Integer getAllNumbers()-->
+    <select id="getAllNumbers" resultType="Integer">
+        select count(*) from t_user
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+@Test
+public void testgetAllNumbers(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SelectMapper mapper = sqlSession.getMapper(SelectMapper.class);
+    Integer numbers = mapper.getAllNumbers();
+    System.out.println(numbers);
+}
+```
+
+接口配置文件中的resultType中的值写的是别名，别名表如下：
+
+![](https://picture-1310712259.cos.ap-nanjing.myqcloud.com/7.png)
+
+![](https://picture-1310712259.cos.ap-nanjing.myqcloud.com/8.png)
+
+### 4、查询一个数据为map集合
+
+接口代码
+
+```java
+/**
+ * 根据id查询用户信息为一个map集合
+ */
+Map<String,Object> getUserByIdToMap(@Param("ID") Integer id);
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.SelectMapper">
+    <!--Map<String,Object> getUserByIdToMap(@Param("ID") Integer id)-->
+    <select id="getUserByIdToMap" resultType="map">
+        select * from t_user where id = #{ID}
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+@Test
+public void getUserByIdToMap(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SelectMapper mapper = sqlSession.getMapper(SelectMapper.class);
+    Map<String, Object> map = mapper.getUserByIdToMap(4);
+    System.out.println(map);
+    //存储在map中，以字段为键，以属性值为键值
+    System.out.println(map.get("username"));
+}
+```
+
+### 5、查询多条数据为map集合
+
+方式一：将查询到的每一个map存储在List集合中
+
+接口代码
+
+```java
+/**
+ * 查询所有用户信息为map集合
+ */
+List<Map<String,Object>> getAllUserToMap();
+```
+
+接口代码配置文件
+
+```xml
+<!--Map<String,Object> getAllUserToMap()-->
+<select id="getAllUserToMap" resultType="map">
+    select * from t_user
+</select>
+```
+
+测试文件
+
+```java
+@Test
+public void getAllUserToMap(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SelectMapper mapper = sqlSession.getMapper(SelectMapper.class);
+    List<Map<String, Object>> allUserToMap = mapper.getAllUserToMap();
+    System.out.println(allUserToMap);
+    }
+```
+
+方式二：完全通过map存储
+
+接口代码：
+
+```java
+    /**
+     * 查询所有用户信息为map集合
+     */
+    @MapKey("id")//作用，将id作为map的键，将map结果作为对应的值。挑选的键要唯一
+    Map<String,Object> getAllUserToMap();
+```
+
+接口配置文件代码：
+
+```xml
+<!--Map<String,Object> getAllUserToMap()-->
+<select id="getAllUserToMap" resultType="map">
+    select * from t_user
+</select>
+```
+
+测试文件
+
+```java
+    @Test
+    public void getAllUserToMap(){
+        SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+        SelectMapper mapper = sqlSession.getMapper(SelectMapper.class);
+        Map<String, Object> allUserToMap = mapper.getAllUserToMap();
+        System.out.println(allUserToMap);
+    }
+```
+
+## 七、执行特殊的SQL
+
+主要考虑的是使用${}还是#{}，注意两者的区别
+
+### 1、模糊查询
+
+注意接口代码配置文件的三种方式，推荐最后一种。不能使用select * from t_user where username like '%#{Username}%'，因为#{Username}会自动添加上单引号
+
+接口代码
+
+```java
+/**
+ * 根据用户名模糊查询用户信息
+ */
+List<User> getUserByLike(@Param("Username") String username);
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.SQLMapper">
+    <!--List<User> getUserByLike(@Param("Username") String username)-->
+    <select id="getUserByLike" resultType="User">
+        <!--select * from t_user where username like '%${Username}%'-->
+        <!--select * from t_user where username like concat('%',#{Username},'%')-->
+        select * from t_user where username like "%"#{Username}"%"
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+@Test
+public void testGetUserByLike(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SQLMapper mapper = sqlSession.getMapper(SQLMapper.class);
+    List<User> list = mapper.getUserByLike("a");
+    System.out.println(list);
+}
+```
+
+### 2、批量删除
+
+只能使用${}，因为#{}会自动添加上单引号
+
+接口代码：
+
+```java
+/**
+ * 批量删除
+ */
+int deleteMore(@Param("ids") String ids);
+```
+
+接口配置文件：
+
+```xml
+<!--int deleteMore(@Param("ids") String ids)-->
+<delete id="deleteMore">
+    delete from t_user where id in (${ids})
+</delete>
+```
+
+测试文件
+
+```java
+@Test
+public void testDeleteMore(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SQLMapper mapper = sqlSession.getMapper(SQLMapper.class);
+    int result = mapper.deleteMore("1,2,4");
+    System.out.println(result);
+}
+```
+
+### 3、动态设置表名
+
+只能使用${}，因为表名不能加单引号
+
+接口代码：
+
+```java
+/**
+ * 查询指定表中数据
+ */
+List<User> getUserByTableName(@Param("tableName") String tableName);
+```
+
+接口代码配置文件
+
+```xml
+<!--   List<User> getUserByTableName(@Param("tableName") String tableName)-->
+<select id="getUserByTableName" resultType="User">
+    select * from ${tableName}
+</select>
+```
+
+测试文件
+
+```java
+@Test
+public void testGetUserByTableName(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SQLMapper mapper = sqlSession.getMapper(SQLMapper.class);
+    List<User> t_user = mapper.getUserByTableName("t_user");
+    System.out.println(t_user);
+}
+```
+
+### 4、添加功能获取自增的主键
+
+接口代码：
+
+```java
+/**
+ * 添加用户信息
+ */
+void insertUser(User user);
+```
+
+接口配置文件代码：
+
+```xml
+<!--void insertUser(User user)
+    useGeneratedKeys：设置当前标签中的sql使用了自增的主键
+    Property：将自增的主键赋值给传输到映射文件中参数的某个属性
+-->
+<insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+    insert into t_user values(null,#{username},#{password},#{age},#{sex},#{email})
+</insert>
+```
+
+测试文件
+
+```java
+@Test
+public void testInsertUser(){
+    SqlSession sqlSession = SqlSessionUtils.getSqlSession();
+    SQLMapper mapper = sqlSession.getMapper(SQLMapper.class);
+    User user = new User(null,"afei","123",23,"男","123@qq.com");
+    mapper.insertUser(user);
+    System.out.println(user);
+}
+```
+
+## 八、自定义映射(ResultMap)
+
+本节主要讲字段名与属性名不匹配时解决的手法
+
+### 1、环境搭建(最新)
+
+1. 创建maven工程
+
+2. 导入依赖
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <project xmlns="http://maven.apache.org/POM/4.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+       <modelVersion>4.0.0</modelVersion>
+   
+       <groupId>com.hua.mybatis</groupId>
+       <artifactId>MyBatis_demo3</artifactId>
+       <version>1.0-SNAPSHOT</version>
+       <!--设置打包方式-->
+       <packaging>jar</packaging>
+   
+       <dependencies>
+           <!-- Mybatis核心 -->
+           <dependency>
+               <groupId>org.mybatis</groupId>
+               <artifactId>mybatis</artifactId>
+               <version>3.5.7</version>
+           </dependency>
+   
+           <!-- junit测试 -->
+           <dependency>
+               <groupId>junit</groupId>
+               <artifactId>junit</artifactId>
+               <version>4.12</version>
+               <scope>test</scope>
+           </dependency>
+   
+           <!-- MySQL驱动 -->
+           <dependency>
+               <groupId>mysql</groupId>
+               <artifactId>mysql-connector-java</artifactId>
+               <version>5.1.3</version>
+           </dependency>
+   
+           <!-- log4j日志 -->
+           <dependency>
+               <groupId>log4j</groupId>
+               <artifactId>log4j</artifactId>
+               <version>1.2.17</version>
+           </dependency>
+       </dependencies>
+   
+   </project>
+   ```
+
+3. 在resources下写jdbc配置文件和日志文件
+
+   jdbc
+
+   ```properties
+   jdbc.driver=com.mysql.jdbc.Driver
+   jdbc.url=jdbc:mysql://localhost:3306/mybatis?characterEncoding=utf8
+   jdbc.username=root
+   jdbc.password=abc123
+   ```
+
+   日志文件
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8" ?>
+   <!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+   <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+       <appender name="STDOUT" class="org.apache.log4j.ConsoleAppender">
+           <param name="Encoding" value="UTF-8" />
+           <layout class="org.apache.log4j.PatternLayout">
+               <param name="ConversionPattern" value="%-5p %d{MM-dd HH:mm:ss,SSS} %m (%F:%L) \n" />
+           </layout>
+       </appender>
+       <logger name="java.sql">
+           <level value="debug" />
+       </logger>
+       <logger name="org.apache.ibatis">
+           <level value="info" />
+       </logger>
+       <root>
+           <level value="debug" />
+           <appender-ref ref="STDOUT" />
+       </root>
+   </log4j:configuration>
+   ```
+
+4. 写核心配置文件，在resources下
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8" ?>
+   <!DOCTYPE configuration
+           PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+           "http://mybatis.org/dtd/mybatis-3-config.dtd">
+   <configuration>
+       <properties resource="jdbc.properties"/>
+       <typeAliases>
+           <package name="com.hua.mybatis.pojo"/>
+       </typeAliases>
+   
+       <!--配置连接数据库的环境-->
+       <environments default="development">
+           <environment id="development">
+               <transactionManager type="JDBC"/>
+               <dataSource type="POOLED">
+                   <property name="driver" value="${jdbc.driver}"/>
+                   <property name="url" value="${jdbc.url}"/>
+                   <property name="username" value="${jdbc.username}"/>
+                   <property name="password" value="${jdbc.password}"/>
+               </dataSource>
+           </environment>
+       </environments>
+   
+       <!--引入映射文件-->
+       <mappers>
+           <package name="com.hua.mybatis.mapper"/>
+       </mappers>
+   </configuration>
+   ```
+
+5. 在java(mapper和pojo)和resources(mapper)下创建对应的包，注意resources下创建包的方式
+
+6. 编写实体类以及对应的配置文件
+
+### 2、通过起别名来阶段字段名与属性名不同
+
+为字段起别名，保持和属性名的一致，如果不起别名也不会报错，只是不一致名字的就没有显示了
+
+接口：
+
+```java
+/**
+ * 查询所有员工信息
+ */
+List<Emp> getAllEmp();
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.EmpMapper">
+    <!--List<Emp> getAllEmp()-->
+    <select id="getAllEmp" resultType="Emp">
+       select eid,emp_name empName,age,sex,email from t_emp  
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+@Test
+public void testGetAllEmp(){
+    SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+    EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+    List<Emp> allEmp = mapper.getAllEmp();
+    System.out.println(allEmp);
+}
+```
+
+### 3、设置全局配置
+
+通过设置全局配置，将 _ 自动映射为驼峰
+
+在核心配置文件中添加
+
+```xml
+<!--设置MyBatis的全局配置-->
+<settings>
+    <!--将 _ 自动映射为驼峰，比如：emp_name : empName-->
+    <setting name="mapUnderscoreToCamelCase" value="true"/>
+</settings>
+```
+
+接口
+
+```java
+/**
+ * 查询所有员工信息
+ */
+List<Emp> getAllEmp();
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.EmpMapper">
+    <!--List<Emp> getAllEmp()-->
+    <select id="getAllEmp" resultType="Emp">
+        <!--select eid,emp_name empName,age,sex,email from t_emp-->
+        select * from t_emp
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+@Test
+public void testGetAllEmp(){
+    SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+    EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+    List<Emp> allEmp = mapper.getAllEmp();
+    System.out.println(allEmp);
+}
+```
+
+### 4、通过resultMap
+
+接口代码
+
+```java
+/**
+ * 查询所有员工信息
+ */
+List<Emp> getAllEmp();
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.EmpMapper">
+    <!--
+        resultMap：设置自定义映射关系
+        id:设置唯一标识，不可重复
+        type：设置映射关系的实体类类型
+        子标签：
+            id:设置主键的映射关系
+            result:设置普通字段的映射关系
+        属性：
+        property:设置映射关系中的属性名，必须是type属性所设置的实体类类型中的属性名
+        column：设置映射关系中的字段名，必须是sql语句查询出的字段名
+    -->
+    <resultMap id="empResultMap" type="Emp">
+        <id property="eid" column="eid"></id>
+        <result property="empName" column="emp_name"></result>
+        <result property="age" column="age"></result>
+        <result property="sex" column="sex"></result>
+        <result property="email" column="email"></result>
+    </resultMap>
+
+    <!--List<Emp> getAllEmp()-->
+    <select id="getAllEmp" resultMap="empResultMap">
+        select * from t_emp
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+@Test public void testGetAllEmp(){
+    SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+    EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+    List<Emp> allEmp = mapper.getAllEmp();
+    System.out.println(allEmp);
+}
+```
+
+### 5、多对一映射处理
+
+查询员工信息以及员工所对应的部门信息
+
+1. 方式一：级联方式处理映射关系
+
+   接口代码
+
+   ```java
+   /**
+    * 查询所有员工信息
+    */
+   List<Emp> getAllEmp();
+   ```
+
+   
+
+   **要在emp类中创建Dept类以及对应的get和set方法**
+
+   
+
+   接口配置文件
+
+   ```xml
+   <!--处理多对一映射关系方式一：级联属性赋值-->
+   <resultMap id="empAndDeptResultMapOne" type="Emp">
+       <id property="eid" column="eid"/>
+       <result property="empName" column="emp_name"></result>
+       <result property="age" column="age"></result>
+       <result property="sex" column="sex"></result>
+       <result property="email" column="email"></result>
+       <result property="dept.did" column="did"></result>
+       <result property="dept.deptName" column="dept_name"></result>
+   </resultMap>
+   <!--Emp getEmpAndDept(@Param("eid") Integer eid)-->
+   <select id="getEmpAndDept" resultMap="empAndDeptResultMapOne">
+       select * from t_emp left join t_dept on t_emp.did = t_dept.did where t_emp.eid = #{eid}
+   </select>
+   ```
+
+   测试文件
+
+   ```java
+   @Test public void testEmpAndDept(){
+       SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+       EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+       Emp empAndDept = mapper.getEmpAndDept(1);
+       System.out.println(empAndDept);
+   }
+   ```
+
+2. 通过association来处理多对一的关系
+
+   接口代码
+
+   ```java
+   /**
+    * 查询员工以及员工所对应部门的信息
+    */
+   Emp getEmpAndDept(@Param("eid") Integer eid);
+   ```
+
+   配置文件
+
+   ```xml
+   <!--处理多对一映射关系方式二：通过association-->
+   <resultMap id="empAndDeptResultMapTwo" type="Emp">
+       <id property="eid" column="eid"/>
+       <result property="empName" column="emp_name"></result>
+       <result property="age" column="age"></result>
+       <result property="sex" column="sex"></result>
+       <result property="email" column="email"></result>
+       <!--
+           association：处理多对一的映射关系
+           property:需要处理多对一映射关系的属性名
+           javaType:该属性的类型
+       -->
+       <association property="dept" javaType="Dept">
+           <id property="did" column="did"></id>
+           <result property="deptName" column="dept_name"></result>
+       </association>
+   </resultMap>
+   <!--Emp getEmpAndDept(@Param("eid") Integer eid)-->
+   <select id="getEmpAndDept" resultMap="empAndDeptResultMapTwo">
+       select * from t_emp left join t_dept on t_emp.did = t_dept.did where t_emp.eid = #{eid}
+   </select>
+   ```
+
+   测试文件
+
+   ```java
+   @Test public void testEmpAndDept(){
+       SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+       EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+       Emp empAndDept = mapper.getEmpAndDept(1);
+       System.out.println(empAndDept);
+   }
+   ```
+
+3. 分步查询处理多对一的关系
+
+   接口代码
+
+   EmpMapper
+
+   ```java
+   /**
+    * 通过分步查询员工以及员工所对应部门的信息
+    * 分布查询第一步查询员工信息
+    */
+   Emp getEmpAndDeptByStepOne(@Param("eid") Integer eid);
+   ```
+
+   DeptMapper
+
+   ```java
+   /**
+    * 通过分布查询员工以及员工所对应的部门信息
+    * 分布查询的第二步：通过did查询员工所对应的部门
+    */
+   Dept getEmpAndDeptByStepTwo(@Param("did") Integer did);
+   ```
+
+   配置文件代码
+
+   EmpMapper.xml
+
+   ```xml
+   <resultMap id="empAndDeptByStepResultMap" type="Emp">
+       <id property="eid" column="eid"/>
+       <result property="empName" column="emp_name"></result>
+       <result property="age" column="age"></result>
+       <result property="sex" column="sex"></result>
+       <result property="email" column="email"></result>
+       <!--
+           select:设置分布查询的sql的唯一标识(namesqace.SQLId 或 mapper接口的全类名.方法名)
+           column:设置分布查询的条件
+   		fetchType:当开启全局的延迟加载之后，可通过此属性手动控制延迟加载的效果
+               fetchType="lazy/eager"
+                   eager:立即加载
+                   lazy：延迟加载
+       -->
+       <association property="dept"
+                    select="com.hua.mybatis.mapper.DeptMapper.getEmpAndDeptByStepTwo"
+                    column="did"></association>
+   </resultMap>
+   <!--Emp getEmpAndDeptByStepOne(@Param("eid") Integer eid)-->
+   <select id="getEmpAndDeptByStepOne" resultMap="empAndDeptByStepResultMap">
+       select * from t_emp where eid = #{eid}
+   </select>
+   ```
+
+   DeptMapper.xml
+
+   ```xml
+   <mapper namespace="com.hua.mybatis.mapper.DeptMapper">
+       <!--Dept getEmpAndDeptByStepTwo(@Param("did") Integer did)-->
+       <select id="getEmpAndDeptByStepTwo" resultType="Dept">
+           select * from t_dept where did = #{did}
+       </select>
+   </mapper>
+   ```
+
+   测试文件
+
+   ```java
+   @Test public void testGetEmpAndDeptByStep(){
+       SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+       EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+       Emp empAndDept = mapper.getEmpAndDeptByStepOne(1);
+       System.out.println(empAndDept);
+   }
+   ```
+
+延迟加载
+
+### 6、一对多映射处理
+
+注意：一对多，在一实体类里面创建一的集合；多对一：在多里面创建一的对象
+
+1. 方式一：使用collection
+
+   接口代码
+
+   ```java
+   /**
+    * 部门以及部门中所有员工信息
+    *
+    */
+   Dept getDeptAndEmp(@Param("did") Integer did);
+   ```
+
+   
+
+   注意：需要在dept里面创建emp集合
+
+   
+
+   接口配置
+
+   ```xml
+   <resultMap id="deptAndEmpResultMap" type="Dept">
+       <id property="did" column="did"></id>
+       <result property="deptName" column="dept_name"></result>
+       <!--
+           Collection：处理一对多的映射关系
+           ofType：表示该属性所对应的集合中存储数据的类型
+       -->
+       <collection property="emps" ofType="Emp">
+           <id property="eid" column="eid"></id>
+           <result property="empName" column="emp_Name"></result>
+           <result property="age" column="age"></result>
+           <result property="sex" column="sex"></result>
+           <result property="email" column="email"></result>
+       </collection>
+   </resultMap>
+   
+   <!--Dept getDeptAndEmp(@Param("did") Integer did)-->
+   <select id="getDeptAndEmp" resultMap="deptAndEmpResultMap">
+       select * from t_dept left join t_emp on t_dept.did = t_emp.did where t_dept.did = #{did}
+   </select>
+   ```
+
+   测试文件
+
+   ```java
+   @Test
+   public void testGetDeptAndEmp(){
+       SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+       DeptMapper mapper = sqlSession.getMapper(DeptMapper.class);
+       Dept deptAndEmp = mapper.getDeptAndEmp(1);
+       System.out.println(deptAndEmp);
+   }
+   ```
+
+2. 方式二：分步查询
+
+   接口代码
+
+   ```java
+   /**
+    * 通过分步查询查询部门以及部门中所有员工的信息
+    * 分步查询第一步：查询部门信息
+    */
+   Dept getDeptAndEmpByStepOne(@Param("did") Integer did);
+   ```
+
+   在Dept中创建对应着emp的集合
+
+   
+
+   接口配置文件
+
+   ```xml
+   <resultMap id="deptAndEmpByStepResultMap" type="Dept">
+       <id property="did" column="did"></id>
+       <result property="deptName" column="dept_name"></result>
+       <collection property="emps"
+                   select="com.hua.mybatis.mapper.EmpMapper.getDeptAndEmpByStepTwo"
+                   column="did"></collection>
+   </resultMap>
+   <!--Dept getDeptAndEmpByStepOne(@Param("did") Integer did)-->
+   <select id="getDeptAndEmpByStepOne" resultMap="deptAndEmpByStepResultMap">
+       select * from t_dept where did = #{did}
+   </select>
+   ```
+
+   接口代码
+
+   ```java
+   /**
+    * 通过分步查询查询部门以及部门中所有员工的信息
+    * 分步查询第二步：根据did查询员工信息
+    */
+   List<Emp> getDeptAndEmpByStepTwo(@Param("did") Integer id);
+   ```
+
+   接口配置文件
+
+   ```xml
+   <!--List<Emp> getDeptAndEmpByStepTwo(@Param("did") Integer id)-->
+   <select id="getDeptAndEmpByStepTwo" resultType="Emp">
+       select * from t_emp where did = #{did}
+   </select>
+   ```
+
+   测试文件
+
+   ```java
+   @Test
+   public void testGetDeptAndEmpByStep(){
+       SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+       DeptMapper mapper = sqlSession.getMapper(DeptMapper.class);
+       Dept deptAndEmp = mapper.getDeptAndEmpByStepOne(1);
+       System.out.println(deptAndEmp);
+   }
+   ```
+
