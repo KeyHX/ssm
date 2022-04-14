@@ -824,7 +824,7 @@ public void testgetAllUser() throws IOException {
 
 MyBatis获取参数值的两种方式：${} 和 #{}
 
-${} 的本质就是字符串的拼接，#{} 的本质就是占位符赋值
+${} 的本质就是**字符串的拼接**，#{} 的本质就是**占位符赋值**
 
 ${}使用字符串的方式拼接sql，若为字符串类型或者日期类型的字段进行赋值时，需要手动加单引号
 
@@ -1138,7 +1138,7 @@ Integer getAllNumbers();
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.hua.mybatis.mapper.SelectMapper">
-	<!--Integer getAllNumbers()-->
+	<!--Integer getAllNumbers()，注意resultType的类型-->
     <select id="getAllNumbers" resultType="Integer">
         select count(*) from t_user
     </select>
@@ -1994,4 +1994,763 @@ List<Emp> getAllEmp();
        System.out.println(deptAndEmp);
    }
    ```
+
+## 九、动态SQL
+
+动态SQL功能：帮助我们实现sql语句的拼接，主要是拼接关键字和条件
+
+### 1、if标签
+
+if标签可以通过属性test的表达式来进行判断，如果表达式的结果为true，则标签内容执行，否则不执行。
+
+接口代码：
+
+```java
+/**
+ * 多条件查询
+ */
+List<Emp> getEmpCondition(Emp emp);
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.DynamicSQLMapper">
+
+    <!--List<Emp> getEmpCondition(Emp emp)-->
+    <select id="getEmpCondition" resultType="Emp">
+        <!--加1 = 1的原因，如果第一个if不成立，执行第二个if的时候会多一个and1-->
+        select * from t_emp where 1 = 1
+        <!--如果没有传参数则默认是null或者是空字符串-->
+        <if test="empName != null and empName != '' ">
+            emp_name = #{empName}
+        </if>
+        <if test="age != null and age != ''">
+            and age = #{age}
+        </if>
+        <if test="sex != null and sex != ''">
+            and sex = #{sex}
+        </if>
+        <if test="email != null and email != ''">
+            and email = #{email}
+        </if>
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+/**
+ * 动态sql
+ * 1、if：根据标签中test属性所对应的表达式决定标签中的内容是否需要拼接到SQL中
+ */
+@Test
+public void testDynamic(){
+    SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+    DynamicSQLMapper mapper = sqlSession.getMapper(DynamicSQLMapper.class);
+    List<Emp> emp = mapper.getEmpCondition(new Emp(null, null, null, "男", "123@qq.com"));
+    System.out.println(emp);
+}
+```
+
+### 2、where标签
+
+where：当where标签中有内容时，会自动生成where关键字，并且将内容前多余的and 或 or去掉
+*           当where标签没有内容时，此时where标签没有任何效果
+*           注意：where标签不能将其中内容后面的多余的and 或 or 去掉
+
+与if相比，只有接口配置文件有变化
+
+```xml
+<select id="getEmpCondition" resultType="Emp">
+    select * from t_emp
+    <!--如果where里面有内容使用where标签能自动的生成where关键字，能够自动的去除and/or关键字-->
+    <where>
+        <!--如果没有传参数则默认是null或者是空字符串-->
+        <if test="empName != null and empName != '' ">
+            emp_name = #{empName}
+        </if>
+        <if test="age != null and age != ''">
+            and age = #{age}
+        </if>
+        <if test="sex != null and sex != ''">
+            and sex = #{sex}
+        </if>
+        <if test="email != null and email != ''">
+            and email = #{email}
+        </if>
+    </where>
+</select>
+```
+
+### 3、trim标签
+
+若标签中有内容时：
+
+*          perfix/suffix:将trim标签中内容前面或后面添加指定内容
+*          suffixOverrides/prefixOverrides:将trim标签中内容前面或后面去掉指定内容
+
+若标签中没有内容时：trim标签也没有任何效果
+
+```xml
+<select id="getEmpCondition" resultType="Emp">
+    select * from t_emp
+    <trim prefix="where" suffixOverrides="and|or">
+        <!--如果没有传参数则默认是null或者是空字符串-->
+        <if test="empName != null and empName != '' ">
+            emp_name = #{empName} and
+        </if>
+        <if test="age != null and age != ''">
+            age = #{age} or
+        </if>
+        <if test="sex != null and sex != ''">
+            sex = #{sex} and
+        </if>
+        <if test="email != null and email != ''">
+            email = #{email}
+        </if>
+    </trim>
+</select>
+```
+
+### 4、choose,when,otherwise
+
+choose,when,otherwise 相当于if...else if...else..,只会执行一个
+*          when:至少有一个，otherwise至多有一个
+*          choose是父标签
+
+接口代码：
+
+```java
+/**
+ * 测试choose when  otherwise
+ */
+List<Emp> getEmpByChoose(Emp emp);
+```
+
+接口配置文件
+
+```xml
+<select id="getEmpCondition" resultType="Emp">
+    select * from t_emp
+    <trim prefix="where" suffixOverrides="and|or">
+        <!--如果没有传参数则默认是null或者是空字符串-->
+        <if test="empName != null and empName != '' ">
+            emp_name = #{empName} and
+        </if>
+        <if test="age != null and age != ''">
+            age = #{age} or
+        </if>
+        <if test="sex != null and sex != ''">
+            sex = #{sex} and
+        </if>
+        <if test="email != null and email != ''">
+            email = #{email}
+        </if>
+    </trim>
+</select>
+```
+
+测试文件
+
+```java
+@Test
+public void testGetEmpByChoose(){
+    SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+    DynamicSQLMapper mapper = sqlSession.getMapper(DynamicSQLMapper.class);
+    List<Emp> emp = mapper.getEmpByChoose(new Emp(null, null, null, null, null));
+    System.out.println(emp);
+
+}
+```
+
+### 5、foreach
+
+foreach就是用来循环遍历的，foreach标签的属性
+
+collection:设置需要循环的数组或集合
+item：表示数组或集合中每一个数据
+separator：循环体之间的分隔符
+open：foreach标签所循环的所有内容的开始符
+close：foreach标签所循环的所有内容的结束符
+
+1. foreach标签用在数组上面
+
+   接口代码
+
+   ```java
+   /**
+    * 通过数组实现批量删除
+    */
+   int deleteMoreByArray(@Param("eids") Integer[] eids);
+   ```
+
+   接口配置文件
+
+   ```xml
+   <!--int deleteMoreByArray(Integer[] eids)-->
+   <delete id="deleteMoreByArray">
+   
+       <!--
+           delete form t_emp where eid in
+           <foreach collection="eids" item="eid" separator="," close=")" open="(">
+              #{eid}
+           </foreach>
+       -->
+   
+       delete from t_emp where
+       <!--
+           collection:是对应的参数Param
+           item：是遍历的每一个
+           separator:是分隔符
+           open：是开始符号
+           close：是结束符号
+       -->
+       <foreach collection="eids" item="eid" separator="or">
+           eid = #{eid}
+       </foreach>
+   </delete>
+   ```
+
+   测试文件
+
+   ```java
+   @Test
+   public void testDeleteMoreByAray(){
+       SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+       DynamicSQLMapper mapper = sqlSession.getMapper(DynamicSQLMapper.class);
+       int i = mapper.deleteMoreByArray(new Integer[]{7,8});
+       System.out.println(i);
+   }
+   ```
+
+2. foreach用在集合上面
+
+   接口代码
+
+   ```java
+   /**
+    * 通过list集合实现批量添加
+    */
+   int insertMoreByList(@Param("emps") List<Emp> emps);
+   ```
+
+   接口配置文件
+
+   ```xml
+   <!--int insertMoreByList(List<Emp> emps)-->
+   <insert id="insertMoreByList">
+       insert into t_emp values
+       <foreach collection="emps" item="emp" separator=",">
+           (null,#{emp.empName},#{emp.age},#{emp.sex},#{emp.email},null)
+       </foreach>
+   </insert>
+   ```
+
+   测试文件
+
+   ```java
+   @Test
+   public void testinsertMoreByList(){
+       SqlSession sqlSession = SQLSessionUtils.getSQLSession();
+       DynamicSQLMapper mapper = sqlSession.getMapper(DynamicSQLMapper.class);
+       Emp emp1 = new Emp(null,"a1",23,"男","123@qq.com");
+       Emp emp2 = new Emp(null,"a2",23,"男","123@qq.com");
+       Emp emp3 = new Emp(null,"a3",23,"男","123@qq.com");
+       List<Emp> emps = Arrays.asList(emp1,emp2,emp3);
+       int i = mapper.insertMoreByList(emps);
+       System.out.println(i);
+   }
+   ```
+
+### 6、sql标签
+
+```java
+* 声明sql片段：
+*     <!--sql片段-->
+*     <sql id="empColumns">eid,emp_name,age,sex,email</sql>
+* 使用sql片段：
+*     <include refid="empColumns"></include>
+```
+
+## 十、MyBatis的缓存
+
+缓存只针对查询功能有效
+
+### 1、MyBatis的一级缓存
+
+一级缓存是SqlSession级别的，通过同一个SqlSession查询的数据会被缓存下来，下次查询相同的数据，就会从缓存中直接获取，不会从数据库重新访问。一级缓存是自动开启的
+
+一级缓存失效的情况
+
+1. 不同的SqlSession对应不同的一级缓存
+
+2. 同一个SqlSession但是查询的条件不同
+
+3. 同一个SqlSession两次查询期间执行了任何一次增删改操作
+
+4. 同一个SqlSession两次查询期间手动清空了缓存
+
+   ```
+   //清除一级缓存
+   sqlSession1.clearCache();
+   ```
+
+举例：
+
+接口代码：
+
+```java
+public interface CacheMapper {
+    Emp getEmpByEid(@Param("eid") Integer eid);
+}
+```
+
+接口配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hua.mybatis.mapper.CacheMapper">
+    <!--Emp getEmpByEid(@Param("eid") Integer eid)-->
+    <select id="getEmpByEid" resultType="Emp">
+        select * from t_emp where eid = #{eid}
+    </select>
+</mapper>
+```
+
+测试文件
+
+```java
+public class CacheMapperTest {
+    @Test
+    public void testCache(){
+        SqlSession sqlSession1 = SQLSessionUtils.getSQLSession();
+        CacheMapper mapper1 = sqlSession1.getMapper(CacheMapper.class);
+        Emp emp1 = mapper1.getEmpByEid(1);
+        System.out.println(emp1);
+        CacheMapper mapper2 = sqlSession1.getMapper(CacheMapper.class);
+        Emp emp2 = mapper2.getEmpByEid(1);
+        System.out.println(emp2);
+
+        SqlSession sqlSession2 = SQLSessionUtils.getSQLSession();
+        CacheMapper mapper3 = sqlSession2.getMapper(CacheMapper.class);
+        Emp empByEid = mapper3.getEmpByEid(1);
+        System.out.println(empByEid);
+    }
+}
+```
+
+执行结果
+
+DEBUG 04-14 11:24:47,487 ==>  Preparing: select * from t_emp where eid = ? (BaseJdbcLogger.java:137) 
+DEBUG 04-14 11:24:47,506 ==> Parameters: 1(Integer) (BaseJdbcLogger.java:137) 
+DEBUG 04-14 11:24:47,521 <==      Total: 1 (BaseJdbcLogger.java:137) 
+Emp{eid=1, empName='张三', age=1, sex='男', email='123@qq.com', dept=null}
+Emp{eid=1, empName='张三', age=1, sex='男', email='123@qq.com', dept=null}
+DEBUG 04-14 11:24:47,593 ==>  Preparing: select * from t_emp where eid = ? (BaseJdbcLogger.java:137) 
+DEBUG 04-14 11:24:47,594 ==> Parameters: 1(Integer) (BaseJdbcLogger.java:137) 
+DEBUG 04-14 11:24:47,595 <==      Total: 1 (BaseJdbcLogger.java:137) 
+Emp{eid=1, empName='张三', age=1, sex='男', email='123@qq.com', dept=null}
+
+### 2、MyBatis二级缓存
+
+二级缓存是SqlSessionFactory级别的，通过一个SqlSessionFactory创建的SqlSession查询的结果会被缓存，此后若再执行相同的查询语句，结果就会从缓存中取
+
+二级缓存开启的条件
+
+1. 在核心配置文件中，设置全局配置属性cacheEnabled=true，默认为true，不需要设置
+
+2. 在映射文件中设置标签<cache/>
+
+3. 二级缓存必须在SqlSession(一级缓存)关闭或提交之后有效
+
+   ```
+   sqlSession1.commit();
+   sqlSession1.close();
+   ```
+
+4. 查询的数据所转换的实体类类型必须实现序列化的接口
+
+使二级缓存失效的情况
+
+两次查询之间执行了任意的增删改，会使一级和二级缓存同时失效
+
+缓存仅仅调用增删改时刷新
+
+### 3、二级缓存的相关配置
+
+* eviction属性：缓存回收策略
+
+  LRU（Least Recently Used） – 最近最少使用的：移除最长时间不被使用的对象。
+  FIFO（First in First out） – 先进先出：按对象进入缓存的顺序来移除它们。
+  SOFT – 软引用：移除基于垃圾回收器状态和软引用规则的对象。
+  WEAK – 弱引用：更积极地移除基于垃圾收集器状态和弱引用规则的对象。
+  默认的是 LRU。
+
+* flushInterval属性：刷新间隔，单位毫秒
+
+  默认情况是不设置，也就是没有刷新间隔，缓存仅仅调用语句时刷新
+
+* size属性：引用数目，正整数
+
+  代表缓存最多可以存储多少个对象，太大容易导致内存溢出
+
+* readOnly属性：只读，true/false
+
+  true：只读缓存；会给所有调用者返回缓存对象的相同实例。因此这些对象不能被修改。这提供了
+  很重要的性能优势。
+  false：读写缓存；会返回缓存对象的拷贝（通过序列化）。这会慢一些，但是安全，因此默认是
+  false。
+
+### 4、MyBatis缓存查询的顺序
+
+* 先查询二级缓存，因为二级缓存可能有其他程序已经查询出来的结果，可以拿来直接使用。
+* 如果二级缓存没有命中，再查询一级缓存
+* 如果一级缓存也没有命中，则查询数据库
+* SqlSession关闭之后，一级缓存中的数据会写入二级缓存
+
+### 5、整合第三方缓存EHCache
+
+1. 添加依赖
+
+   ```xml
+   <!-- Mybatis EHCache整合包 -->
+   <dependency>
+   <groupId>org.mybatis.caches</groupId>
+   <artifactId>mybatis-ehcache</artifactId>
+   <version>1.2.1</version>
+   </dependency>
+   <!-- slf4j日志门面的一个具体实现 -->
+   <dependency>
+   <groupId>ch.qos.logback</groupId>
+   <artifactId>logback-classic</artifactId>
+   <version>1.2.3</version>
+   </dependency>
+   ```
+
+2. 各jar包的功能
+
+   | jar包名称       | 作用                            |
+   | --------------- | ------------------------------- |
+   | mybatis-ehcache | Mybatis和EHCache的整合包        |
+   | ehcache         | EHCache核心包                   |
+   | slf4j-api       | SLF4J日志门面包                 |
+   | logback-classic | 支持SLF4J门面接口的一个具体实现 |
+
+3. 创建EHChache的配置文件ehcache.xml
+
+   ```xml
+   <?xml version="1.0" encoding="utf-8" ?>
+   <ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:noNamespaceSchemaLocation="../config/ehcache.xsd">
+   <!-- 磁盘保存路径,将缓存保存到磁盘上 -->
+   <diskStore path="D:\atguigu\ehcache"/>
+   <defaultCache
+   maxElementsInMemory="1000"
+   maxElementsOnDisk="10000000"
+   eternal="false"
+   overflowToDisk="true"
+   timeToIdleSeconds="120"
+   timeToLiveSeconds="120"
+   diskExpiryThreadIntervalSeconds="120"
+   memoryStoreEvictionPolicy="LRU">
+   </defaultCache>
+   </ehcache>
+   ```
+
+4. 设置二级缓存的类型
+
+   ```xml
+   <cache type="org.mybatis.caches.ehcache.EhcacheCache"/>
+   ```
+
+5. 加入logback日志
+
+   存在SLF4J时，作为简易日志的log4j将失效，此时我们需要借助SLF4J的具体实现logback来打印日志。
+   创建logback的配置文件logback.xml
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <configuration debug="true">
+       <!-- 指定日志输出的位置 -->
+       <appender name="STDOUT"
+                 class="ch.qos.logback.core.ConsoleAppender">
+           <encoder>
+           <!-- 日志输出的格式 -->
+           <!-- 按照顺序分别是：时间、日志级别、线程名称、打印日志的类、日志主体内容、换行 -->
+           <pattern>[%d{HH:mm:ss.SSS}] [%-5level] [%thread] [%logger]
+           [%msg]%n</pattern>
+           </encoder>
+       </appender>
+       <!-- 设置全局日志级别。日志级别按顺序分别是：DEBUG、INFO、WARN、ERROR -->
+       <!-- 指定任何一个日志级别都只打印当前级别和后面级别的日志。 -->
+       <root level="DEBUG">
+           <!-- 指定打印日志的appender，这里通过“STDOUT”引用了前面配置的appender -->
+           <appender-ref ref="STDOUT" />
+       </root>
+       <!-- 根据特殊需求指定局部日志级别 -->
+       <logger name="com.atguigu.crowd.mapper" level="DEBUG"/>
+   </configuration>
+   ```
+
+## 十一、MyBatis的逆向工程
+
+* 正向工程：先创建java实体类，由框架负责根据实体类生成数据库表。Hibernate是支持正向工程的
+* 反向工程：先创建数据库表，由框架负责根据数据库表，反向生成如下资源
+  * java实体类
+  * Mapper接口
+  * Mapper映射文件
+
+### 1、创建逆向工程的步骤
+
+#### a、添加依赖和插件
+
+```xml
+<packaging>jar</packaging>
+
+<!-- 依赖MyBatis核心包 -->
+<dependencies>
+    <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis</artifactId>
+        <version>3.5.7</version>
+    </dependency>
+
+    <!-- log4j日志 -->
+    <dependency>
+        <groupId>log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>1.2.17</version>
+    </dependency>
+
+
+    <!-- junit测试 -->
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.12</version>
+        <scope>test</scope>
+    </dependency>
+
+
+    <!-- MySQL驱动 -->
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+        <version>5.1.3</version>
+    </dependency>
+</dependencies>
+
+
+
+<!-- 控制Maven在构建过程中相关配置 -->
+<build>
+    <!-- 构建过程中用到的插件 -->
+    <plugins>
+        <!-- 具体插件，逆向工程的操作是以构建过程中插件形式出现的 -->
+        <plugin>
+            <groupId>org.mybatis.generator</groupId>
+            <artifactId>mybatis-generator-maven-plugin</artifactId>
+            <version>1.3.0</version>
+            <!-- 插件的依赖 -->
+            <dependencies>
+                <!-- 逆向工程的核心依赖 -->
+                <dependency>
+                    <groupId>org.mybatis.generator</groupId>
+                    <artifactId>mybatis-generator-core</artifactId>
+                    <version>1.3.2</version>
+                </dependency>
+                <!-- 数据库连接池 -->
+                <dependency>
+                    <groupId>com.mchange</groupId>
+                    <artifactId>c3p0</artifactId>
+                    <version>0.9.2</version>
+                </dependency>
+                <!-- MySQL驱动 -->
+                <dependency>
+                    <groupId>mysql</groupId>
+                    <artifactId>mysql-connector-java</artifactId>
+                    <version>5.1.8</version>
+                </dependency>
+            </dependencies>
+        </plugin>
+    </plugins>
+</build>
+```
+
+#### b、创建MyBatis的核心配置文件
+
+#### c、创建逆向工程的配置文件
+
+文件名必须是：generatorConfig.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+<generatorConfiguration>
+        <!--
+            targetRuntime: 执行生成的逆向工程的版本
+            MyBatis3Simple: 生成基本的CRUD（清新简洁版）
+            MyBatis3: 生成带条件的CRUD（奢华尊享版）
+        -->
+        <context id="DB2Tables" targetRuntime="MyBatis3Simple">
+            <!-- 数据库的连接信息 -->
+            <jdbcConnection driverClass="com.mysql.jdbc.Driver"
+                            connectionURL="jdbc:mysql://localhost:3306/mybatis?characterEncoding=utf8"
+                            userId="root"
+                            password="abc123">
+            </jdbcConnection>
+            <!-- javaBean的生成策略,就是实体类的生成策略-->
+            <javaModelGenerator targetPackage="com.hua.mybatis.pojo" targetProject=".\src\main\java">
+                <!--是否生成子包-->
+                <property name="enableSubPackages" value="true" />
+                <!--去除字符串前后空格，将字段名转为属性，有空格就去掉-->
+                <property name="trimStrings" value="true" />
+            </javaModelGenerator>
+            <!-- SQL映射文件的生成策略 -->
+            <sqlMapGenerator targetPackage="com.hua.mybatis.mapper" targetProject=".\src\main\resources">
+                <property name="enableSubPackages" value="true" />
+            </sqlMapGenerator>
+            <!-- Mapper接口的生成策略 -->
+            <javaClientGenerator type="XMLMAPPER" targetPackage="com.hua.mybatis.mapper" targetProject=".\src\main\java">
+                <property name="enableSubPackages" value="true" />
+            </javaClientGenerator>
+            <!-- 逆向分析的表 -->
+            <!-- tableName设置为*号，可以对应所有表，此时不写domainObjectName -->
+            <!-- domainObjectName属性指定生成出来的实体类的类名 -->
+            <table tableName="t_emp" domainObjectName="Emp"/>
+            <table tableName="t_dept" domainObjectName="Dept"/>
+        </context>
+        </generatorConfiguration>
+```
+
+#### d、执行MBG插件的generate
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/2.png)
+
+### 2、测试奢华尊享版
+
+在配置文件中修改为奢华尊享版
+
+下面的为QBC查询
+
+```java
+public class MBGTest {
+    @Test
+    public void testMBG(){
+        try {
+            InputStream is = Resources.getResourceAsStream("mybatis-config.xml");
+            SqlSessionFactoryBuilder sqlSessionFactoryBuilder = new SqlSessionFactoryBuilder();
+            SqlSessionFactory sqlSessionFactory = sqlSessionFactoryBuilder.build(is);
+            SqlSession sqlSession = sqlSessionFactory.openSession(true);
+            EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+            //查询所有数据
+//            List<Emp> list = mapper.selectByExample(null);
+//            for(Emp emp : list){
+//                System.out.println(emp);
+//            }
+
+            //根据条件查询
+//            EmpExample empExample = new EmpExample();
+//            empExample.createCriteria().andEmpNameEqualTo("张三").andAgeEqualTo(1);
+//            empExample.or().andDidIsNotNull();
+//            List<Emp> list = mapper.selectByExample(empExample);
+//            for(Emp emp : list){
+//                System.out.println(emp);
+//            }
+
+
+            //修改
+            //普通修改:有null值也会修改
+//            mapper.updateByPrimaryKey(new Emp(1,"admin",22,null,"@456.com",2));
+
+            //选择修改：有null值，则该字段不修改
+            mapper.updateByPrimaryKeySelective(new Emp(1,"admin",22,null,"@456.com",2));
+
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+## 十二、分页插件
+
+### 1、分页插件使用步骤
+
+#### 1、添加依赖
+
+```xml
+<!-- https://mvnrepository.com/artifact/com.github.pagehelper/pagehelper -->
+<dependency>
+<groupId>com.github.pagehelper</groupId>
+<artifactId>pagehelper</artifactId>
+<version>5.2.0</version>
+</dependency>
+```
+
+#### 2、配置分页插件
+
+在MyBatis的核心配置文件中配置插件
+
+```xml
+<plugins>
+<!--设置分页插件-->
+<plugin interceptor="com.github.pagehelper.PageInterceptor"></plugin>
+</plugins>
+```
+
+### 2、分页插件的使用
+
+a>在查询功能之前使用PageHelper.startPage(int pageNum, int pageSize)开启分页功能
+		pageNum：当前页的页码
+		pageSize：每页显示的条数
+b>在查询获取list集合之后，使用PageInfo<T> pageInfo = new PageInfo<>(List<T> list, int
+		navigatePages)获取分页相关数据
+		list：分页之后的数据
+		navigatePages：导航分页的页码数
+c>分页相关数据
+		PageInfo{
+		pageNum=8, pageSize=4, size=2, startRow=29, endRow=30, total=30, pages=8,
+		list=Page{count=true, pageNum=8, pageSize=4, startRow=28, endRow=32, total=30,
+		pages=8, reasonable=false, pageSizeZero=false},
+		prePage=7, nextPage=0, isFirstPage=false, isLastPage=true, hasPreviousPage=true,
+		hasNextPage=false, navigatePages=5, navigateFirstPage4, navigateLastPage8,
+		navigatepageNums=[4, 5, 6, 7, 8]
+		}
+常用数据：
+		pageNum：当前页的页码
+		pageSize：每页显示的条数
+		size：当前页显示的真实条数
+		total：总记录数
+		pages：总页数
+		prePage：上一页的页码
+		nextPage：下一页的页码
+
+​		isFirstPage/isLastPage：是否为第一页/最后一页
+​		hasPreviousPage/hasNextPage：是否存在上一页/下一页
+​		navigatePages：导航分页的页码数
+​		navigatepageNums：导航分页的页码，[1,2,3,4,5]
+
+
+
+# END
+
+
+
+
+
+
 
