@@ -1,5 +1,9 @@
 # Spring5
 
+![](C:\Users\AIERXUAN\Desktop\picture\DD\2.jpg)
+
+![](C:\Users\AIERXUAN\Desktop\picture\DD\1.jpg)
+
 ## 一、Spring框架
 
 ### 1、学习内容
@@ -121,7 +125,7 @@ id属性：唯一标识
 
 class属性：要创建的类的全路径
 
-创建对象的时候，默认执行的是类的空参构造器(类要有空参构造器，否则报错)
+**创建对象的时候，默认执行的是类的空参构造器(类要有空参构造器，否则报错)**
 
 ```java
     //此处的bean1就是上面创建的配置文件
@@ -284,7 +288,7 @@ public class UserService1 {
 
     //创建UserDao类型属性，生成set方法,用来在配置文件中进行属性的注入
     private UserDao1 userDao1;
-    public void setUserDao(UserDao1 userDao1) {
+    public void setUserDao1(UserDao1 userDao1) {
         this.userDao1 = userDao1;
     }
     public void add(){
@@ -311,7 +315,7 @@ public class UserService1 {
 
 ​	（1）一对多关系：部门和员工，一个部门有多个员工，一个员工属于一个部门，部门是一，员工是多
 
-​    （2）在实体类之间表示一对多关系，员工表示所属部门，使用对象类型属性进行表示
+​    （2）在实体类之间表示一对多关系，员工表示所属部门，使用对象类型属性进行表示，在多的里面创建一的对象
 
 ```java
 //部门类
@@ -409,7 +413,7 @@ public class Emp {
     <property name="dept" ref="dept"></property>
     <property name="dept.dname" value="技术部"></property>
 </bean>
-<bean id="dept" class="com.atguigu.spring5.bean.Dept">
+<bean id="dept" class="com.hua.spring5.bean.Dept">
     <property name="dname" value="财务部"></property>
 </bean>
 ```
@@ -464,7 +468,7 @@ public class Stu {
 
 ```xml
 <!--1 集合类型属性注入-->
-<bean id="stu" class="com.atguigu.spring5.collectiontype.Stu">
+<bean id="stu" class="com.hua.spring5.collectiontype.Stu">
     <!--数组类型属性注入-->
     <property name="courses">
         <array>
@@ -502,10 +506,10 @@ public class Stu {
     </property>
 </bean>
 <!--创建多个course对象-->
-<bean id="course1" class="com.atguigu.spring5.collectiontype.Course">
+<bean id="course1" class="com.hua.spring5.collectiontype.Course">
     <property name="cname" value="Spring5框架"></property>
 </bean>
-<bean id="course2" class="com.atguigu.spring5.collectiontype.Course">
+<bean id="course2" class="com.hua.spring5.collectiontype.Course">
     <property name="cname" value="MyBatis框架"></property>
 </bean>
 ```
@@ -528,7 +532,7 @@ public class Stu {
     </util:list>
 
     <!--2 提取list集合类型属性注入使用-->
-    <bean id="book" class="com.atguigu.spring5.collectiontype.Book" scope="prototype">
+    <bean id="book" class="com.hua.spring5.collectiontype.Book" scope="prototype">
         <property name="list" ref="bookList"></property>
     </bean>
 </beans>
@@ -538,7 +542,7 @@ public class Stu {
 
 1. Spring有两种类型bean，一种普通bean，另一种工厂bean（FactoryBean）
 
-2. 普通bean：在而皮质文件中定义bean类型就是返回类型
+2. 普通bean：在配置文件中定义bean类型就是返回类型
 
 3. 工厂bean：在配置文件定义bean类型可以和返回类型不一样
 
@@ -578,10 +582,22 @@ public class MyBean implements FactoryBean<Course> {
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
                            http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
-    <bean id="myBean" class="com.atguigu.spring5.factorybean.MyBean">
+    <bean id="myBean" class="com.hua.spring5.factorybean.MyBean">
     </bean>
 </beans>
 ```
+
+```java
+@Test public void test3() { 
+	ApplicationContext context = new ClassPathXmlApplicationContext("bean3.xml"); 
+	Course course = context.getBean("myBean", Course.class); 
+	System.out.println(course); 
+}
+```
+
+
+
+
 
 ### 6、IOC操作bean管理 （bean作用域）
 
@@ -595,7 +611,7 @@ public class MyBean implements FactoryBean<Course> {
 
    (1)在spring配置文件bean标签里面有属性(scope)用于设置单实例还是多实例
 
-   (2)scope属性值：默认值singleton，表示单实例对象。prototype，表示多实例对象。设置属性值为singleton时，加载spring配置文件时候就会创建单实例对象。设置为prototype时候，不是在加载spring配置文件时候创建对象，在调用getBean方法时创建多实例对象。
+   (2)scope属性值：默认值singleton，表示单实例对象。prototype，表示多实例对象。**设置属性值为singleton时，加载spring配置文件时候就会创建单实例对象。设置为prototype时候，不是在加载spring配置文件时候创建对象，在调用getBean方法时创建多实例对象。**
 
    ![](https://picture-1310712259.cos.ap-nanjing.myqcloud.com/%E5%A4%9A%E5%AE%9E%E4%BE%8B.png)
 
@@ -714,18 +730,31 @@ public class MyBean implements FactoryBean<Course> {
 
 2. 演示自动装配：根据属性名称和属性类型自动注入
 
-   ```xml
-   <!--实现自动装配
-       bean标签属性autowire，配置自动装配
-       autowire属性常用两个值：
-           byName根据属性名称注入 ，注入值bean的id值和类属性名称一样
-           byType根据属性类型注入
-   -->
-   <bean id="emp" class="com.atguigu.spring5.autowire.Emp" autowire="byType">
-       <!--<property name="dept" ref="dept"></property>-->
-   </bean>
-   <bean id="dept" class="com.atguigu.spring5.autowire.Dept"></bean>
-   ```
+   * 根据属性名称自动注入
+   
+     ```xml
+     <!--实现自动装配
+         bean标签属性autowire，配置自动装配
+         autowire属性常用两个值：
+             byName根据属性名称注入 ，注入值bean的id值和类属性名称一样
+             byType根据属性类型注入
+     -->
+     <bean id="emp" class="com.hua.spring5.autowire.Emp" autowire="byType">
+         <!--<property name="dept" ref="dept"></property>-->
+     </bean>
+     <bean id="dept" class="com.hua.spring5.autowire.Dept"></bean>
+     ```
+   
+   * 根据属性类型自动注入
+   
+     ```xml
+     <bean id="emp" class="com.hua.spring5.autowire.Emp" autowire="byType"> 
+         <!--<property name="dept" ref="dept"></property>--> 
+     </bean> 
+     <bean id="dept" class="com.hua.spring5.autowire.Dept"></bean>
+     ```
+   
+     
 
 ### 9、IOC操作Bean管理(外部属性文件)
 
@@ -777,9 +806,9 @@ public class MyBean implements FactoryBean<Course> {
 
 1.  注解：是代码的特殊标记，作用在类、方法、属性上面，目的是为了简化xml配置
 
-2. Spring针对Bean管理中**创建对象**提供的注解
+2. Spring针对Beaen管理中**创建对象**提供的注解
 
-   @Component、@Service、@Controller、@Respository
+   @Component(web层)、@Service(业务逻辑层)、@Controller(控制层)、@Respository(持久层)
 
 ### 2、基于注解方式实现创建对象步骤
 
@@ -805,8 +834,10 @@ public class MyBean implements FactoryBean<Course> {
    public class UserService {
     public void add() {
     System.out.println("service add.......");
-    } }
+    } 
+   }
    
+   //开启组件扫描的细节
     <!--示例一
            use-default-filters="false" 表示现在不使用默认的filter,自己配置filter
            context:include-filter,设置扫描哪些内容
@@ -831,7 +862,7 @@ public class MyBean implements FactoryBean<Course> {
 
     第一步  创建Service和dao对象，在service和dao类中添加创建对象注解
 
-    第二步 在service注入dao对象，在service添加dao类型熟悉感，在属性上面使用注解
+    第二步 在service注入dao对象，在service添加dao类属性，在属性上面使用注解
 
     ```java
     @Service
@@ -1017,7 +1048,7 @@ aop是面向切面编程，利用aop可以对业务逻辑的各个部分进行�
 
 ### 5、AOP操作
 
-1. Spring框架一般都是基于 AspectJ实现AOP 操作：AspectJ不是Spring组成部分，独立AOP框架，一般把AspectJ和Spring框架一起使用进行AOP操作
+1. Spring框架一般都是基于 **AspectJ**实现AOP 操作：AspectJ不是Spring组成部分，独立AOP框架，一般把AspectJ和Spring框架一起使用进行AOP操作
 
 2. 基于AspectJ实现AOP操作
 
@@ -1047,7 +1078,8 @@ aop是面向切面编程，利用aop可以对业务逻辑的各个部分进行�
    public class User {
     public void add() {
     System.out.println("add.......");
-    } }
+    } 
+   }
    ```
 
    第二步 创建增强类(编写增强逻辑)
@@ -1067,7 +1099,7 @@ aop是面向切面编程，利用aop可以对业务逻辑的各个部分进行�
 
       ```xml
        <!-- 开启注解扫描 -->
-       <context:component-scan base-package="com.atguigu.spring5.aopanno"></context:component-scan>
+       <context:component-scan base-package="com.hua.spring5.aopanno"></context:component-scan>
       ```
 
       * 2、使用注解创建User和UserProxy
@@ -1098,27 +1130,27 @@ aop是面向切面编程，利用aop可以对业务逻辑的各个部分进行�
      public class UserProxy {
       //前置通知
       //@Before 注解表示作为前置通知
-      @Before(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+      @Before(value = "execution(* com.hua.spring5.aopanno.User.add(..))")
       public void before() {
      	 System.out.println("before.........");
       }
       //后置通知（返回通知）
-      @AfterReturning(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+      @AfterReturning(value = "execution(* com.hua.spring5.aopanno.User.add(..))")
       public void afterReturning() {
       	System.out.println("afterReturning.........");
       }
       //最终通知
-      @After(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+      @After(value = "execution(* com.hua.spring5.aopanno.User.add(..))")
       public void after() {
       	System.out.println("after.........");
       }
       //异常通知
-      @AfterThrowing(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+      @AfterThrowing(value = "execution(* com.hua.spring5.aopanno.User.add(..))")
       public void afterThrowing() {
       	System.out.println("afterThrowing.........");
       }
       //环绕通知
-      @Around(value = "execution(* com.atguigu.spring5.aopanno.User.add(..))")
+      @Around(value = "execution(* com.hua.spring5.aopanno.User.add(..))")
       public void around(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
           System.out.println("环绕之前.........");
           //被增强的方法执行
@@ -1139,7 +1171,7 @@ aop是面向切面编程，利用aop可以对业务逻辑的各个部分进行�
    //@Before 注解表示作为前置通知
    @Before(value = "pointdemo()")
    public void before() {
-    System.out.println("before.........");
+    	System.out.println("before.........");
    }
    ```
 
@@ -1186,8 +1218,8 @@ Spring 框架对 JDBC 进行封装，使用 JdbcTemplate 方便实现对数据�
 2. 在Spring配置文件中配置数据库连接池
 
    ```xml
-   <!-- 数据库连接池 --> <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" 
-    destroy-method="close">
+   <!-- 数据库连接池 --> 
+   <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" destroy-method="close">
     <property name="url" value="jdbc:mysql:///user_db" />
     <property name="username" value="root" />
     <property name="password" value="root" />
@@ -1200,19 +1232,20 @@ Spring 框架对 JDBC 进行封装，使用 JdbcTemplate 方便实现对数据�
    ```xml
    <!-- JdbcTemplate 对象 --> 
    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
-    <!--注入 dataSource-->
-    <property name="dataSource" ref="dataSource"></property>
+    	<!--注入 dataSource-->
+    	<property name="dataSource" ref="dataSource"></property>
    </bean>
    ```
 
 4. 创建service类，创建dao类，在dao类注入JdbcTemplate对象
 
    ```xml
-   <!-- 组件扫描 --> <context:component-scan base-package="com.atguigu"></context:component-scan>
+   <!-- 组件扫描 --> 
+   <context:component-scan base-package="com.hua"></context:component-scan>
    ```
-
+   
    Service类
-
+   
    ```java
    @Service
    public class BookService {
@@ -1221,9 +1254,9 @@ Spring 框架对 JDBC 进行封装，使用 JdbcTemplate 方便实现对数据�
     private BookDao bookDao; 
     }
    ```
-
+   
    Dao类
-
+   
    ```java
    @Repository
    public class BookDaoImpl implements BookDao {
@@ -1606,7 +1639,7 @@ public void accountMoney(){
 
 ①  在Spring配置文件中配置事务管理器
 
-```ABAP
+```XML
 <!--创建事务管理器-->
 <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
     <!--注入数据源-->

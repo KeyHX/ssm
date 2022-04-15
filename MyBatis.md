@@ -1,6 +1,10 @@
 # MyBatis
 
-![](https://picture-1310712259.cos.ap-nanjing.myqcloud.com/MyBatis.png)\
+![](https://picture-1310712259.cos.ap-nanjing.myqcloud.com/MyBatis.png)
+
+![](C:\Users\AIERXUAN\Desktop\picture\DD\6.jpg)
+
+![](C:\Users\AIERXUAN\Desktop\picture\DD\5.jpg)
 
 ## 一、MyBatis简介
 
@@ -1550,7 +1554,7 @@ public void testInsertUser(){
 
 6. 编写实体类以及对应的配置文件
 
-### 2、通过起别名来阶段字段名与属性名不同
+### 2、通过起别名来解决字段名与属性名不同
 
 为字段起别名，保持和属性名的一致，如果不起别名也不会报错，只是不一致名字的就没有显示了
 
@@ -1832,8 +1836,8 @@ List<Emp> getAllEmp();
        <result property="sex" column="sex"></result>
        <result property="email" column="email"></result>
        <!--
-           select:设置分布查询的sql的唯一标识(namesqace.SQLId 或 mapper接口的全类名.方法名)
-           column:设置分布查询的条件
+           select:设置分步查询的sql的唯一标识(namesqace.SQLId 或 mapper接口的全类名.方法名)
+           column:设置分步查询的条件
    		fetchType:当开启全局的延迟加载之后，可通过此属性手动控制延迟加载的效果
                fetchType="lazy/eager"
                    eager:立即加载
@@ -1841,16 +1845,17 @@ List<Emp> getAllEmp();
        -->
        <association property="dept"
                     select="com.hua.mybatis.mapper.DeptMapper.getEmpAndDeptByStepTwo"
-                    column="did"></association>
+                    column="did">
+       </association>
    </resultMap>
    <!--Emp getEmpAndDeptByStepOne(@Param("eid") Integer eid)-->
    <select id="getEmpAndDeptByStepOne" resultMap="empAndDeptByStepResultMap">
        select * from t_emp where eid = #{eid}
    </select>
    ```
-
+   
    DeptMapper.xml
-
+   
    ```xml
    <mapper namespace="com.hua.mybatis.mapper.DeptMapper">
        <!--Dept getEmpAndDeptByStepTwo(@Param("did") Integer did)-->
@@ -1859,9 +1864,9 @@ List<Emp> getAllEmp();
        </select>
    </mapper>
    ```
-
+   
    测试文件
-
+   
    ```java
    @Test public void testGetEmpAndDeptByStep(){
        SqlSession sqlSession = SQLSessionUtils.getSQLSession();
@@ -1875,7 +1880,7 @@ List<Emp> getAllEmp();
 
 ### 6、一对多映射处理
 
-注意：一对多，在一实体类里面创建一的集合；多对一：在多里面创建一的对象
+注意：一对多，在一实体类里面创建多的集合；多对一：在多里面创建一的对象
 
 1. 方式一：使用collection
 
@@ -2060,7 +2065,7 @@ public void testDynamic(){
 
 ### 2、where标签
 
-where：当where标签中有内容时，会自动生成where关键字，并且将内容前多余的and 或 or去掉
+where：当where标签中有内容时，会自动生成where关键字，并且将**内容前**多余的and 或 or去掉
 *           当where标签没有内容时，此时where标签没有任何效果
 *           注意：where标签不能将其中内容后面的多余的and 或 or 去掉
 
@@ -2136,24 +2141,28 @@ List<Emp> getEmpByChoose(Emp emp);
 接口配置文件
 
 ```xml
-<select id="getEmpCondition" resultType="Emp">
-    select * from t_emp
-    <trim prefix="where" suffixOverrides="and|or">
-        <!--如果没有传参数则默认是null或者是空字符串-->
-        <if test="empName != null and empName != '' ">
-            emp_name = #{empName} and
-        </if>
-        <if test="age != null and age != ''">
-            age = #{age} or
-        </if>
-        <if test="sex != null and sex != ''">
-            sex = #{sex} and
-        </if>
-        <if test="email != null and email != ''">
-            email = #{email}
-        </if>
-    </trim>
-</select>
+<select id="getEmpByChoose" resultType="Emp">
+        select * from t_emp
+        <where>
+            <choose>
+                <when test="empName != null and empName != ''">
+                    emp_name = #{empName}
+                </when>
+                <when test="age != null and age != ''">
+                    age = #{age}
+                </when>
+                <when test="sex != null and sex != ''">
+                    sex = #{sex}
+                </when>
+                <when test="email != null and email != ''">
+                    email = #{email}
+                </when>
+                <otherwise>
+                    did = 1
+                </otherwise>
+            </choose>
+        </where>
+    </select>
 ```
 
 测试文件
