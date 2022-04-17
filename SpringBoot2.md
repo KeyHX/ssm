@@ -232,6 +232,81 @@ SpringBoot2简化了配置，所有配置都可以放在resources下的applicati
   * SpringBoot所有的自动配置功能都在 spring-boot-autoconfigure包里面
   
 
+### 3、自动配置原理
+
+#### 3.1 引导加载自动配置类
+
+```java
+@SpringBootApplication
+//相当于下面三个注解
+//@SpringBootConfiguration
+//@EnableAutoConfiguration
+//@ComponentScan("com.hua")
+
+@SpringBootConfiguration 就相当于@Configuration，代表当前是一个配置类
+    
+@ComponentScan("com.hua")组件扫描
+    
+@EnableAutoConfiguration包含下面两个注解
+    1、@AutoConfigurationPackage：自动配置包，内部包含下面注解
+    	@Import({AutoConfigurationPackages.Registrar.class})：利用Register给容器中导入一系列组件
+    		将指定包下（MainApplication所在包）的所有组件导入进来
+	2、@Import({AutoConfigurationImportSelector.class})
+    		①、利用getAutoConfigurationEntry(annotationMetadata)给容器中批量导入组件
+    		②、调用List<String> configurations = this.getCandidateConfigurations(annotationMetadata, attributes)获取所有需要导入的包
+    		③、利用Map<String, List<String>> loadSpringFactories(ClassLoader classLoader)加载所有的组件
+    		④、从META-INF/spring.factories位置加载一个文件，默认扫描这个位置的文件，主要是spring-boot-autoconfigure-2.6.6.jar包下的META-INF/spring.factories
+
+```
+
+#### 3.2 按需开启自动配置项
+
+虽然场景的所有自动配置文件在启动的时候默认全部加载，但最终会按照条件装配原则按需配置
+
+默认会在底层配置好所有的组件，但是如果用户自己配置了，以用户的优先
+
+```java
+ @Bean
+ @ConditionalOnMissingBean()//判断当前容器中是否已经存在了当前组件，就是用户自己配置的组件
+ public MultipartResolver multipartResolver(MultipartResolver resolver) {
+            return resolver;
+        }
+    }
+		
+```
+
+总结：
+
+* SpringBoot先加载所有自动配置类xxxxxAutoConfiguratioon
+* 每个自动配置类按照条件进行生效，默认都会绑定配置文件指定的值 xxxxxProperties里面拿，xxxxProperties和配置文件进行了绑定
+* 生效的配置类就会给容器中装配很多组件
+* 只要容器中有这些组件，相当于这些功能就有了
+* 只要用户有自己配置的就以用户的优先
+* 定制化配置：
+  * 方法一：用户自己使用@Bean替换底层组件
+  * 方法二：用户去看这个组件时获取配置文件什么值去修改
+
+xxxxxAutoConfiguration ---> 组件 ----> xxxxxProperties里面拿值 ---> application.properties
+
+### 4、最佳实践
+
+* 引入场景依赖（就是那个starter）
+
+* 查看自动配置了哪些（选做）
+
+  * 自己分析，引入场景的自动配置一般都生效了
+  * 配置文件写debug=true开启自动配置报告：Negative matches不生效的配置，Positive matches:生效的自动配置
+
+* 是否需要修改配置
+
+  * 参照配置文档
+
+  * 自己分析，xxxxProperties绑定了配置文件的哪些前缀
+
+  * 自定义加入或替换组件
+
+     @Bean
+
 ## 四、容器添加
 
 ### 4.1 组件添加
@@ -545,3 +620,235 @@ public class Car {
     }
 }
 ```
+
+## 五、开发技巧
+
+#### 5.1 LomBok
+
+简化javaBean的开发，可以免去我们在javaBean中写get、set、ToString、有参、无参、HashCode、日志等
+
+但是当我们需要定制构造器的时候，还是需要手动写的
+
+步骤一：引入依赖
+
+```xml
+<!--引入lombok插件-->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+```
+
+步骤二：在setting中的plugins中搜索安装插件lombok
+
+步骤三：
+
+简化JavaBean操作
+
+Pet类
+
+```java
+@Data //生成get和set方法
+@ToString//生成toString方法
+@AllArgsConstructor//生成有参构造器
+@NoArgsConstructor//生成无参构造器
+@EqualsAndHashCode //生成HashCode
+public class Pet {
+    private String name;
+}
+```
+
+生成日志文件
+
+```java
+@Slf4j
+@RestController //是Controller和ResponseBody的合体
+public class HelloController {
+    @RequestMapping("/hello")
+    public String hello01(@RequestParam("name") String name){
+        log.info("请求进来了！！！！");//log日志的使用
+        return "Hello,SpringBoot2 !" + "你好！" + name;
+    }
+}
+```
+
+#### 5.2 dev-tools
+
+快捷重新编译项目
+
+引入依赖
+
+```xml
+<!--引入dev-tools依赖-->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-devtools</artifactId>
+    <optional>true</optional>
+</dependency>
+```
+
+ctrl + F9重新热部署
+
+#### 5.3 Spring Initailzr
+
+新建项目里面使用Spring Initailzr初始化项目
+
+## 六、SpringBoot2核心技术---核心功能
+
+### 1、配置文件
+
+#### 1.1 properties
+
+同以前的properties用法一致
+
+#### 1.2 yaml
+
+适合用来做以数据为中心的配置文件
+
+1. 基本语法
+
+   * key: value；kv之间有空格
+   * 大小写敏感
+   * 使用缩进表示
+   * 缩进不允许使用tab，只允许空格（使用也没问题）
+   * 缩进的空格数不重要，只要相同层级的元素左对齐即可
+   * #表示注释
+   * 字符串无需加引号，如果要加。’ ’  与 “ ”表示字符串内容会被转义
+
+2. 数据类型
+
+   * 字面量：单个的、不可再分的值。date、boolean、string、number、null
+
+     k: v
+
+   * 对象：键值对的集合。map、hash、set、object
+
+     ```yaml
+     行内写法：  k: {k1:v1,k2:v2,k3:v3}
+     #或
+     k: 
+       k1: v1
+       k2: v2
+       k3: v3
+     ```
+
+   * 数组：一组按次序排列的值。array、list、queue
+
+     ```yaml
+     行内写法：  k: [v1,v2,v3]
+     #或者
+     k:
+      - v1
+      - v2
+      - v3
+     ```
+
+3. 案例
+
+   person和pet实体类
+
+   ```java
+   @ConfigurationProperties(prefix = "person")
+   @Component
+   @Data
+   @ToString
+   public class Person {
+       private String userName;
+       private Boolean boss;
+       private Date birth;
+       private Integer age;
+       private Pet pet;
+       private String[] interests;
+       private List<String> animal;
+       private Map<String, Object> score;
+       private Set<Double> salarys;
+       private Map<String, List<Pet>> allPets;
+   }
+   ```
+
+   pet类
+
+   ```java
+   @Data
+   @ToString
+   public class Pet {
+       private String name;
+       private Double weight;
+   }
+   ```
+
+   yaml配置文件
+
+   ```yaml
+   person:
+   # 单引号会将 \n 作为字符串输出 双引号会将 \n 作为换行输出
+   # 双引号不会转义，单引号会转义
+     boss: true
+     birth: 2019/12/9
+     age: 18
+   #  interests: [篮球,足球]
+     interests:
+       - 篮球
+       - 足球
+       - 18
+       - 2019/12/9
+     animal: [阿猫,阿狗]
+   #  score:
+   #    english: 80
+   #    math: 90
+     score: {english:80,math:90}
+     salarys:
+       - 9999
+       - 9999.99
+     pet:
+       name: 阿狗
+       weight: 99.99
+     allPets:
+       sick:
+         - {name: 阿狗,weight: 99.99}
+         - name: 阿猫
+           weight: 70
+   
+         - name: 阿赵
+           weight: 60
+       health:
+         - {name: 阿花,weight: 199.99}
+         - {name: 阿和,weight: 199.99}
+     user-name: 张三
+   ```
+
+### 2、Web开发
+
+#### 2.1 静态资源访问
+
+1. 静态资源目录
+
+   类路径下：/static，/public，/resources，/META-INF/resources
+
+   访问：当前项目根路径/ + 静态资源名
+
+   原理：静态映射/**
+
+   请求进来，先去找Controller看能不能处理，不能处理的所有请求又都交给静态资源处理器，静态资源也找不到404
+
+2. 静态资源访问的前缀
+
+   默认无前缀
+
+   在yaml文件中添加
+
+   ```yaml
+   spring:
+     mvc:
+       static-path-pattern: /res/**
+   ```
+
+   访问路径为：当前项目 + static-path-pattern + 静态资源名
+
+   ```java
+   http://localhost:8080/res/7.png
+   ```
+
+3. 改变默认的静态资源路径
+
+   
