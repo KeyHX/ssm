@@ -1,4 +1,4 @@
-# SpringBoot2
+SpringBoot2
 
 ## 一、简介
 
@@ -713,7 +713,7 @@ ctrl + F9重新热部署
    * 缩进不允许使用tab，只允许空格（使用也没问题）
    * 缩进的空格数不重要，只要相同层级的元素左对齐即可
    * #表示注释
-   * 字符串无需加引号，如果要加。’ ’  与 “ ”表示字符串内容会被转义
+   * 字符串无需加引号，如果要加，’ ’  与 “ ”表示字符串内容会被转义
 
 2. 数据类型
 
@@ -851,4 +851,887 @@ ctrl + F9重新热部署
 
 3. 改变默认的静态资源路径
 
+   ```java
+   spring:
+     web:
+       resources:
+         static-locations: classpath:/haha
+   ```
    
+   自定义静态资源访问路径
+
+#### 2.2 欢迎页支持
+
+就是访问根路径的时候，自动跳转到index.html界面
+
+* 静态资源路径下编写index.html
+
+  * 可以配置静态资源路径
+
+  * 不可以配置静态资源的访问前缀，否则导致index.html不能默认访问
+
+    ```yaml
+    spring:
+    #  mvc:
+    #    static-path-pattern: /res/**  这个会导致index.heml失效
+      web:
+        resources:
+          static-locations: classpath:/haha
+    ```
+
+* controller能处理/index请求
+
+#### 2.3 自定义Favicon
+
+在静态文件夹下创建一个favicon.ico，作用就是在访问的时候标签页面又图标显示
+
+```yaml
+spring:
+#  mvc:
+#    static-path-pattern: /res/**
+#  web:
+#    resources:
+#      static-locations: classpath:/haha
+# 这两个会让Favicon功能失效
+```
+
+#### 2.4 静态资源配置原理
+
+* SpringBoot启动默认加载xxxxConfiguration类(自动配置类)
+
+* SpringMVC功能的自动配置类WebMVCAutoConfiguration
+
+* 给容器中配置了什么
+
+  ```java
+  @Configuration(
+      proxyBeanMethods = false
+  )
+  @Import({EnableWebMvcConfiguration.class})
+  @EnableConfigurationProperties({WebMvcProperties.class, WebProperties.class})
+  @Order(0)
+  public static class WebMvcAutoConfigurationAdapter implements WebMvcConfigurer, ServletContextAware {
+  }
+  ```
+
+* 配置文件的相关属性和xxx进行了绑定。WebMvcProperties == spring.mvc、WebProperties == spring.web
+
+1、一个配置类只有一个有参构造器有参构造器，所有参数的值都会从容器中确定
+
+```java
+//webProperties：获取和spring.web绑定的所有的值的对象
+//mvcProperties：获取和spring.mvc绑定的所有的值的对象
+//ListableBeanFactory:找spring容器
+//ObjectProvider：找到所有的messageConvertersProvider
+//resourceHandlerRegistrationCustomizerProvider：找到资源处理器的自定义器 =====
+//ServletRegistrationBean：给应用注册Servlet、Filter
+public WebMvcAutoConfigurationAdapter(WebProperties webProperties, WebMvcProperties mvcProperties, ListableBeanFactory beanFactory, ObjectProvider<HttpMessageConverters> messageConvertersProvider, ObjectProvider<ResourceHandlerRegistrationCustomizer> resourceHandlerRegistrationCustomizerProvider, ObjectProvider<DispatcherServletPath> dispatcherServletPath, ObjectProvider<ServletRegistrationBean<?>> servletRegistrations) {
+    this.resourceProperties = webProperties.getResources();
+    this.mvcProperties = mvcProperties;
+    this.beanFactory = beanFactory;
+    this.messageConvertersProvider = messageConvertersProvider;
+    this.resourceHandlerRegistrationCustomizer = (ResourceHandlerRegistrationCustomizer)resourceHandlerRegistrationCustomizerProvider.getIfAvailable();
+    this.dispatcherServletPath = dispatcherServletPath;
+    this.servletRegistrations = servletRegistrations;
+    this.mvcProperties.checkConfiguration();
+}
+```
+
+2、资源处理的默认规则
+
+```java
+public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    if (!this.resourceProperties.isAddMappings()) {
+        logger.debug("Default resource handling disabled");
+    } else {
+        this.addResourceHandler(registry, "/webjars/**", "classpath:/META-INF/resources/webjars/");
+        this.addResourceHandler(registry, this.mvcProperties.getStaticPathPattern(), (registration) -> {
+            registration.addResourceLocations(this.resourceProperties.getStaticLocations());
+            if (this.servletContext != null) {
+                ServletContextResource resource = new ServletContextResource(this.servletContext, "/");
+                registration.addResourceLocations(new Resource[]{resource});
+            }
+
+        });
+    }
+}
+```
+
+```yaml
+spring:
+  web:
+    resources:
+      add-mappings: false  禁用所有静态资源规则
+```
+
+3、欢迎页面的处理规则
+
+```java
+HandlerMapping：处理器映射。保存了每一个Handler能处理哪些请求。	
+
+@Bean
+	public WelcomePageHandlerMapping welcomePageHandlerMapping(ApplicationContext applicationContext,
+			FormattingConversionService mvcConversionService, ResourceUrlProvider mvcResourceUrlProvider) {
+		WelcomePageHandlerMapping welcomePageHandlerMapping = new WelcomePageHandlerMapping(
+				new TemplateAvailabilityProviders(applicationContext), applicationContext, getWelcomePage(),
+				this.mvcProperties.getStaticPathPattern());
+		welcomePageHandlerMapping.setInterceptors(getInterceptors(mvcConversionService, mvcResourceUrlProvider));
+		welcomePageHandlerMapping.setCorsConfigurations(getCorsConfigurations());
+		return welcomePageHandlerMapping;
+	}
+
+WelcomePageHandlerMapping(TemplateAvailabilityProviders templateAvailabilityProviders,
+		ApplicationContext applicationContext, Optional<Resource> welcomePage, String staticPathPattern) {
+	if (welcomePage.isPresent() && "/**".equals(staticPathPattern)) {
+        //要用欢迎页功能，必须是/**
+		logger.info("Adding welcome page: " + welcomePage.get());
+		setRootViewName("forward:index.html");
+	}
+	else if (welcomeTemplateExists(templateAvailabilityProviders, applicationContext)) {
+        // 调用Controller  /index
+		logger.info("Adding welcome page template: index");
+		setRootViewName("index");
+	}
+}
+```
+
+#### 2.5 请求参数处理
+
+1. 请求映射
+
+* @xxxMapping（RequestMapping）：
+
+* Rest风格支持
+
+  * 以前：/getUser 获取用户     /deleteUser  删除用户   /editUser   修改用户   /saveUser 保存用户
+
+  * 现在：/user   GET-获取用户  DELETE  PUT  POST
+
+  * 核心Filter：HiddenHttpMethodFilter
+
+    * 用法：表单method=post，隐藏域_method=put(注意)
+
+    * 在SpringBoot中手动开启
+
+      ```java
+      //因为这个，所以要在核心配置文件中手动配置开启
+      	@Bean
+      	@ConditionalOnMissingBean(HiddenHttpMethodFilter.class)
+      	@ConditionalOnProperty(prefix = "spring.mvc.hiddenmethod.filter", name = "enabled", matchIfMissing = false)
+      	public OrderedHiddenHttpMethodFilter hiddenHttpMethodFilter() {
+      		return new OrderedHiddenHttpMethodFilter();
+      	}
+      ```
+
+      ```yaml
+      # 核心配置文件中手动开启
+      spring:
+        mvc:
+          hiddenmethod:
+            filter:
+              enabled: true
+      ```
+
+```java
+ @RequestMapping(value = "/user",method = RequestMethod.GET)
+    public String getUser(){
+        return "GET-张三";
+    }
+
+    @RequestMapping(value = "/user",method = RequestMethod.POST)
+    public String saveUser(){
+        return "POST-张三";
+    }
+
+
+    @RequestMapping(value = "/user",method = RequestMethod.PUT)
+    public String putUser(){
+        return "PUT-张三";
+    }
+
+    @RequestMapping(value = "/user",method = RequestMethod.DELETE)
+    public String deleteUser(){
+        return "DELETE-张三";
+    }
+
+//自定义filter
+    @Bean
+    public HiddenHttpMethodFilter hiddenHttpMethodFilter(){
+        HiddenHttpMethodFilter methodFilter = new HiddenHttpMethodFilter();
+        methodFilter.setMethodParam("_m");
+        return methodFilter;
+    }
+```
+
+index.heml
+
+```xml
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1>atguigu，欢迎您</h1>
+测试REST风格；
+<form action="/user" method="get">
+    <input value="REST-GET 提交" type="submit"/>
+</form>
+<form action="/user" method="post">
+    <input value="REST-POST 提交" type="submit"/>
+</form>
+<form action="/user" method="post">
+    <input name="_method" type="hidden" value="delete"/>
+    <input name="_m" type="hidden" value="delete"/>
+    <input value="REST-DELETE 提交" type="submit"/>
+</form>
+<form action="/user" method="post">
+    <input name="_method" type="hidden" value="PUT"/>
+    <input value="REST-PUT 提交" type="submit"/>
+</form>
+    
+</body>
+</html>
+```
+
+Rest原理(表单提交要使用REST的时候)
+
+* 表单提交会带上_method=PUT
+* 请求过来被HiddenHttpMethodFilter拦截
+  * 请求是否正常，并且是post方式
+    * 获取到_method的值
+    * 兼容以下请求：PUT,DELETE,PATCH
+    * 原生request，包装模式requestWrapper重写了getMethod方法，返回的是传入的值。
+    * 过滤器放行的时候用wrapper，以后调用的getMethod是调用requestWrapper的。
+
+Rest使用客户端工具：如postMan直接发送put、delete请求，无需Filter
+
+#### 2.6 请求映射原理
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/25.png)
+
+SpringMVC功能分析都从org.springframework.web.servlet.DispatcherServlet -> doDispatch
+
+```java
+ protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        HttpServletRequest processedRequest = request;
+        HandlerExecutionChain mappedHandler = null;
+        boolean multipartRequestParsed = false;
+        WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
+
+        try {
+            try {
+                ModelAndView mv = null;
+                Exception dispatchException = null;
+
+                try {
+                    processedRequest = this.checkMultipart(request);
+                    multipartRequestParsed = processedRequest != request;
+                    //找到当前请求使用的哪个handler处理，就是找到请求对应的方法
+                    mappedHandler = this.getHandler(processedRequest);
+                    
+                    //mappedHandler
+```
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/26.png)
+
+RequestMappingHandlerMapping:保存了所有@RequestMapping 和 handler的映射规则
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/27.png)
+
+所有请求映射都在HandlerMapping中
+
+* SpringBooot自动配置欢迎页的WelcomePageHandlerMapping。访问/能访问到index.html
+* SpringBoot自动配置了默认的requestMappingHandlerMapping
+* 请求进来，挨个尝试所有HandlerMapping看是否有请求信息
+  * 如果有就找到这个请求对应的Handler
+  * 如果没有就是下一个HandlerMapping
+* 我们需要一些自定义的映射处理，我们也可以自己给容器中放HandlerMapping
+
+#### 2.7 普通参数与基本注解
+
+都是用来修饰形参
+
+@PathVariable：获取路径变量
+
+@RequestHeader：获取请求头信息
+
+@RequestParam：获取请求参数
+
+@MatrixVariable：矩阵变量
+
+@CookieValue：获取cookie
+
+@RequestBody：获取请求体
+
+```java
+@RestController
+public class ParameterTestController {
+    //  car/2/owner/zhangsan
+    @GetMapping("/car/{id}/owner/{username}")
+    public Map<String,Object> getCar(@PathVariable("id") Integer id,
+                                     @PathVariable("username") String name,
+                                     @PathVariable Map<String,String> pv,
+                                     @RequestHeader("User-Agent") String userAgent,
+                                     @RequestHeader Map<String,String> header,
+                                     @RequestParam("age") Integer age,
+                                     @RequestParam("inters") List<String> inters,
+                                     @RequestParam Map<String,String> params,
+                                     @CookieValue("_ga") String _ga,
+                                     @CookieValue("_ga") Cookie cookie){
+
+
+        Map<String,Object> map = new HashMap<>();
+
+//        map.put("id",id);
+//        map.put("name",name);
+//        map.put("pv",pv);
+//        map.put("userAgent",userAgent);
+//        map.put("headers",header);
+        map.put("age",age);
+        map.put("inters",inters);
+        map.put("params",params);
+        map.put("_ga",_ga);
+        System.out.println(cookie.getName()+"===>"+cookie.getValue());
+        return map;
+    }
+
+
+    @PostMapping("/save")
+    public Map postMethod(@RequestBody String content){
+        Map<String,Object> map = new HashMap<>();
+        map.put("content",content);
+        return map;
+    }
+
+
+    //1、语法： 请求路径：/cars/sell;low=34;brand=byd,audi,yd
+    //2、SpringBoot默认是禁用了矩阵变量的功能
+    //      手动开启：原理。对于路径的处理。UrlPathHelper进行解析。
+    //              removeSemicolonContent（移除分号内容）支持矩阵变量的
+    //3、矩阵变量必须有url路径变量才能被解析
+    @GetMapping("/cars/{path}")
+    public Map carsSell(@MatrixVariable("low") Integer low,
+                        @MatrixVariable("brand") List<String> brand,
+                        @PathVariable("path") String path){
+        Map<String,Object> map = new HashMap<>();
+
+        map.put("low",low);
+        map.put("brand",brand);
+        map.put("path",path);
+        return map;
+    }
+
+    // /boss/1;age=20/2;age=10
+
+    @GetMapping("/boss/{bossId}/{empId}")
+    public Map boss(@MatrixVariable(value = "age",pathVar = "bossId") Integer bossAge,
+                    @MatrixVariable(value = "age",pathVar = "empId") Integer empAge){
+        Map<String,Object> map = new HashMap<>();
+
+        map.put("bossAge",bossAge);
+        map.put("empAge",empAge);
+        return map;
+
+    }
+
+}
+```
+
+
+
+index.html内容
+
+```xml
+/cars/{path}?xxx=xxx&aaa=ccc queryString 查询字符串。@RequestParam；<br/>
+/cars/sell;low=34;brand=byd,audi,yd  ；矩阵变量 <br/>
+页面开发，cookie禁用了，session里面的内容怎么使用；
+session.set(a,b)---> jsessionid ---> cookie ----> 每次发请求携带。
+url重写：/abc;jsesssionid=xxxx 把cookie的值使用矩阵变量的方式进行传递.
+
+/boss/1/2
+
+/boss/1;age=20/2;age=20
+
+<a href="/cars/sell;low=34;brand=byd,audi,yd">@MatrixVariable（矩阵变量）</a>
+<a href="/cars/sell;low=34;brand=byd;brand=audi;brand=yd">@MatrixVariable（矩阵变量）</a>
+<a href="/boss/1;age=20/2;age=10">@MatrixVariable（矩阵变量）/boss/{bossId}/{empId}</a>
+<br/>
+<form action="/save" method="post">
+    测试@RequestBody获取数据 <br/>
+    用户名：<input name="userName"/> <br>
+    邮箱：<input name="email"/>
+    <input type="submit" value="提交"/>
+</form>
+<ol>
+    <li>矩阵变量需要在SpringBoot中手动开启</li>
+    <li>根据RFC3986的规范，矩阵变量应当绑定在路径变量中！</li>
+    <li>若是有多个矩阵变量，应当使用英文符号;进行分隔。</li>
+    <li>若是一个矩阵变量有多个值，应当使用英文符号,进行分隔，或之命名多个重复的key即可。</li>
+    <li>如：/cars/sell;low=34;brand=byd,audi,yd</li>
+</ol>
+
+```
+
+在使用矩阵变量的时候首先要进行配置
+
+```java
+@Configuration(proxyBeanMethods = false)
+public class WebConfig /** implements WebMvcConfigurer */ {
+    @Bean
+    public HiddenHttpMethodFilter hiddenHttpMethodFilter(){
+        HiddenHttpMethodFilter hiddenHttpMethodFilter = new HiddenHttpMethodFilter();
+        hiddenHttpMethodFilter.setMethodParam("_m");
+        return hiddenHttpMethodFilter;
+    }
+    //方法二：创建容器
+    @Bean
+    public WebMvcConfigurer webMvcConfigurer(){
+        return new WebMvcConfigurer() {
+            @Override
+            public void configurePathMatch(PathMatchConfigurer configurer) {
+                UrlPathHelper urlPathHelper = new UrlPathHelper();
+                urlPathHelper.setRemoveSemicolonContent(false);
+                configurer.setUrlPathHelper(urlPathHelper);
+            }
+        };
+    }
+
+    //方法一：实现接口来实现功能
+//    @Override
+//    public void configurePathMatch(PathMatchConfigurer configurer) {
+//        UrlPathHelper urlPathHelper = new UrlPathHelper();
+//        //不溢出：后面的内容。矩阵变量功能就可以生效
+//        urlPathHelper.setRemoveSemicolonContent(false);
+//        configurer.setUrlPathHelper(urlPathHelper);
+//    }
+}
+```
+
+servlet API：
+
+WebRequest、ServletRequest、MultipartRequest、 HttpSession、javax.servlet.http.PushBuilder、Principal、InputStream、Reader、HttpMethod、Locale、TimeZone、ZoneId
+
+复杂参数：
+
+**Map**、**Model（map、model里面的数据会被放在request的请求域  request.setAttribute）、**Errors/BindingResult、**RedirectAttributes（ 重定向携带数据）**、**ServletResponse（response）**、SessionStatus、UriComponentsBuilder、ServletUriComponentsBuilder
+
+#### 2.8 自定义Convert
+
+可以通过自定义的Convert来解析浏览器端传输过来的数据
+
+```html
+<form action="/saveuser" method="post">
+    姓名： <input name="userName" value="zhangsan"/> <br/>
+    年龄： <input name="age" value="18"/> <br/>
+    生日： <input name="birth" value="2019/12/10"/> <br/>
+<!--        宠物姓名：<input name="pet.name" value="阿猫"/><br/>-->
+<!--        宠物年龄：<input name="pet.age" value="5"/>-->
+    宠物： <input name="pet" value="啊猫,3"/>
+    <input type="submit" value="保存"/>
+</form>
+```
+
+```java
+@Bean
+public WebMvcConfigurer webMvcConfigurer(){
+    return new WebMvcConfigurer() {
+        //将页面提交的字符串转换为pet类型
+        @Override
+        public void addFormatters(FormatterRegistry registry) {
+            registry.addConverter(new Converter<String, Pet>() {
+                @Override
+                //source就是页面提交过来的值
+                public Pet convert(String source) {
+                    //阿猫，3
+                    if(StringUtils.isEmpty(source)){
+                        Pet pet = new Pet();
+                        String[] split = source.split(",");
+                        pet.setName(split[0]);
+                        pet.setAge(split[1]);
+                        return pet;
+                    }
+                    return null;
+                }
+            });
+        }
+    };
+}
+```
+
+### 3.数据响应与内容协商
+
+#### 3.1 响应JSON
+
+首先要引入依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+web场景自动引入依赖json
+<dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-json</artifactId>
+      <version>2.6.6</version>
+      <scope>compile</scope>
+ </dependency>
+
+```
+
+只要加上@ResponseBody，就会给前端自动返回json数据
+
+#### 3.2HTTPMessageConverter原理
+
+#### 3.3 内容协商
+
+根据客户算的接收能力不同，返回不同类型的数据
+
+1. 首先引入依赖
+
+   ```xml
+   <!--支持xml的依赖-->
+   <dependency>
+       <groupId>com.fasterxml.jackson.dataformat</groupId>
+       <artifactId>jackson-dataformat-xml</artifactId>
+   </dependency>
+   ```
+
+2. postman分别测试json和xml
+
+   只需要改变请求头中的Accept字段，是Http协议中规定的，告诉服务器本客户端可以接收的数据类型
+
+   当Accept是application/xml，就是接收xml格式的文件
+
+   当Accept是application/json，接收的是json格式的数据
+
+#### 3.4 自定义MessageConvert
+
+SpringMVC的默认功能的修改，一个入口给容器中添加一个WebMvcConfigurer
+
+1. 先创建一个KeyHXMessageConvert
+
+   ```java
+   public class KeyHXMessageConvert implements HttpMessageConverter<Person> {
+   //是否可读
+   @Override
+   public boolean canRead(Class<?> clazz, MediaType mediaType) {
+       return false;
+   }
+   
+   @Override
+   public boolean canWrite(Class<?> clazz, MediaType mediaType) {
+       return clazz.isAssignableFrom(Person.class);
+   }
+   
+   /**
+    * 服务器要统计所有MessageConvert都能写出哪些内容类型
+    * application/KeyHX
+    * @return
+    */
+   @Override
+   public List<MediaType> getSupportedMediaTypes() {
+       return MediaType.parseMediaTypes("application/KeyHX");
+   }
+   
+   @Override
+   public Person read(Class<? extends Person> clazz, HttpInputMessage inputMessage) throws IOException, HttpMessageNotReadableException {
+       return null;
+   }
+   
+   @Override
+   public void write(Person person, MediaType contentType, HttpOutputMessage outputMessage) throws IOException, HttpMessageNotWritableException {
+       //自定义协议数据的写出
+       String data = person.getUserName() + ";" + person.getAge() + ";" + person.getBirth();
+   
+       //写出数据
+       OutputStream body = outputMessage.getBody();
+       body.write(data.getBytes());
+   }
+   ```
+
+2. 在WebMvcConfigurer进行配置
+
+   ```java
+   public WebMvcConfigurer webMvcConfigurer(){
+       return new WebMvcConfigurer() {
+           @Override
+           public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+               converters.add(new KeyHXMessageConvert());
+           }
+   ```
+   
+   访问内容
+   
+   ```java
+   @ResponseBody
+   @RequestMapping("/testPerson")
+   public Person getPerson(){
+       Person person = new Person();
+       person.setAge(18);
+       person.setBirth(new Date());
+       person.setUserName("zhangsan");
+       return person;
+   }
+   ```
+   
+3. 在postman中进行实现
+
+   ![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/28.png)
+
+4. 在浏览器中进行访问
+
+   首先要自定义协商策略
+
+   ```java
+   @Bean
+   public WebMvcConfigurer webMvcConfigurer(){
+       return new WebMvcConfigurer() {
+           /**
+            * 自定义内容协商策略
+            * @param configurer
+            */
+           @Override
+           public void configureContentNegotiation(ContentNegotiationConfigurer configurer) {
+               //Map<String, MediaType> mediaTypes
+               Map<String, MediaType> mediaTypeMap = new HashMap<>();
+               mediaTypeMap.put("json",MediaType.APPLICATION_JSON);
+               mediaTypeMap.put("xml",MediaType.APPLICATION_XML);
+               mediaTypeMap.put("KeyHX",MediaType.parseMediaType("application/KeyHX"));
+               //指定支持解析哪些参数对应的哪些媒体类型
+               ParameterContentNegotiationStrategy parameterStrategy = new ParameterContentNegotiationStrategy(mediaTypeMap);
+               //基于请求头的
+               HeaderContentNegotiationStrategy headerStrategy = new HeaderContentNegotiationStrategy();
+   
+               configurer.strategies(Arrays.asList(parameterStrategy,headerStrategy));
+           }
+   ```
+
+   再在核心配置文件中进行配置
+
+   ```yaml
+   spring:
+     mvc:
+       contentnegotiation:
+         favor-parameter: true
+   ```
+
+   浏览器中访问地址
+
+   http://localhost:8080/testPerson?format=xml   其中format的内容可以选择
+
+5. 总结
+
+   在postman中进行访问的是根据请求头信息，在浏览器中进行访问的是参数配置 
+
+### 4、视图解析与模板引擎
+
+视图解析：SpringBoot默认不支持jsp，需要引入第三方模板引擎技术实现页面渲染
+
+视图解析分为：转发，重定向，自定义视图
+
+#### 4.1 thymeleaf的基本语法
+
+1. 表达式
+
+   | 表达式名字 | 语法    | 用途                               |
+   | ---------- | ------- | ---------------------------------- |
+   | 变量取值   | ${...}  | 获取请求域、session域、对象等值    |
+   | 选择变量   | *{...}  | 获取上下文对象值                   |
+   | 消息       | \#{...} | 获取国际化等值                     |
+   | 链接       | @{...}  | 生成链接                           |
+   | 片段表达式 | ~{...}  | jsp:include 作用，引入公共页面片段 |
+
+2. 使用
+
+   * 引入依赖
+
+     ```xml
+     <!--引入thymeleaf依赖-->
+     <dependency>
+         <groupId>org.springframework.boot</groupId>
+         <artifactId>spring-boot-starter-thymeleaf</artifactId>
+     </dependency>
+     ```
+
+   * 页面默认放在templates，且必须是html后缀的，在html引入名称空间
+
+#### 4.2拦截器使用
+
+1. 编写一个拦截器实现接口HandlerInterceptor
+
+   ```java
+   /**
+    * 登陆检查
+    * 1、配置拦截器要拦截哪些请求
+    * 2、将配置放在拦截器中
+    */
+   public class LoginInterceptor implements HandlerInterceptor {
+       /**
+        * 目标方法执行之前
+        *
+        * @param request
+        * @param response
+        * @param handler
+        * @return
+        * @throws Exception
+        */
+       @Override
+       public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+           //登陆检查逻辑
+           HttpSession session = request.getSession();
+           Object loginUser = session.getAttribute("loginUser");
+           if (loginUser != null) {
+               //放行
+               return true;
+           } else {
+               //拦截并跳转到登陆界面
+               request.setAttribute("msg","请先登陆！");
+   //            response.sendRedirect("/");
+               request.getRequestDispatcher("/").forward(request,response);
+               return false;
+           }
+       }
+   
+       /**
+        * 页面渲染方法执行之后
+        *
+        * @param request
+        * @param response
+        * @param handler
+        * @param ex
+        * @throws Exception
+        */
+       @Override
+       public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+           HandlerInterceptor.super.afterCompletion(request, response, handler, ex);
+       }
+   
+       /**
+        *目标方法执行之后
+        *
+        * @param request
+        * @param response
+        * @param handler
+        * @param modelAndView
+        * @throws Exception
+        */
+   
+       @Override
+       public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+           HandlerInterceptor.super.postHandle(request, response, handler, modelAndView);
+       }
+   }
+   ```
+
+2. 拦截器注册到容器中：实现WebMvcConfigurer的addInterceptors方法，指定拦截的规则：如果拦截所有，静态资源也会被拦截
+
+   ```java
+   @Configuration
+   public class AdminWebConfig implements WebMvcConfigurer {
+       @Override
+       public void addInterceptors(InterceptorRegistry registry) {
+           registry.addInterceptor(new LoginInterceptor())
+                   .addPathPatterns("/**") //所有请求都被拦截包括静态资源(样式也会失效)
+                   .excludePathPatterns("/","/login","/css/**","/fonts/**","/images/**","/js/**");//放行的请求
+       }
+   }
+   ```
+
+#### 4.3 文件上传
+
+1. 表单设置submit
+
+   ```java
+   public class FormTestController {
+       @GetMapping("/submit")
+       public String submit(){
+           return "submit";
+       }
+   ```
+
+   ```xml
+   <form method="post" enctype="multipart/form-data" th:action="@{/upload}">
+       <div>
+           <label>生活照</label></br>
+           <input type="file" multiple="multiple" name="images"></br>
+       </div>
+       <div>
+           <label>头像</label></br>
+           <input type="file" name="singleimage"></br>
+       </div>
+       <input type="submit" value="上传">
+   </form>
+   ```
+
+2. 配置文件的大小
+
+   ```yaml
+   spring:
+       servlet:
+           multipart:
+               max-file-size: 64000MB
+               max-request-size: 6400MB
+   ```
+
+3. 处理数据
+
+   ```java
+   @PostMapping("/upload")
+   public String upload(@RequestPart("images") MultipartFile[] headerImg,
+                        @RequestPart("singleimage") MultipartFile singleimage) throws IOException {
+       log.info("上传的信息：headerImg={},singleimage={}",
+               headerImg.length,singleimage.getSize());
+   
+       if(!singleimage.isEmpty()){
+           //保存到文件服务器
+           //获取源文件名字
+           String originalFilename = singleimage.getOriginalFilename();
+           singleimage.transferTo(new File("C:\\Users\\AIERXUAN\\Desktop\\picture\\" + originalFilename));
+       }
+   
+       if(headerImg.length > 0){
+           for (MultipartFile multipartFile : headerImg) {
+               if (!multipartFile.isEmpty()){
+                   String originalFilename = multipartFile.getOriginalFilename();
+                   multipartFile.transferTo(new File("C:\\Users\\AIERXUAN\\Desktop\\picture\\" + originalFilename));
+               }
+           }
+       }
+   
+   
+       return "index";
+   }
+   ```
+
+
+### 5、异常处理
+
+#### 5.1错误处理
+
+1. 处理规则
+
+   * 默认情况下，SpringBoot提供/error处理所有错误请求映射
+   * 对于机器客户端，它将生成json响应，其中包含错误。HTTP状态和异常消息的详细信息。对于浏览器客户端，响应一个whitelabel错误视图，以HTML格式呈现相同的数据
+   * static/error/下的4xx，5xx页面会被自动解析：4xx，5xx是状态码
+
+2. 定制错误处理逻辑
+
+   * 自定义错误页面
+
+     static/error/下写404.html，或者5xx.html:有精确的错误状态码就匹配精确，没有就找4xx.html;如果都没有就触发白页
+
+   * @ControllerAdvice + @ExceptionHandler处理全局异常
+
+     ```java
+     @ControllerAdvice
+     public class GlobalExceptionHandler {
+         @ExceptionHandler(value = {ArithmeticException.class,NullPointerException.class}) //处理异常类型
+         public String handlerArithException(Exception e){
+     
+             return "login";//视图地址
+         }
+     }
+     ```
