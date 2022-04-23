@@ -1409,9 +1409,9 @@ web场景自动引入依赖json
 
 #### 3.4 自定义MessageConvert
 
-SpringMVC的默认功能的修改，一个入口给容器中添加一个WebMvcConfigurer
+自定义返回到浏览器端的数据格式。SpringMVC的默认功能的修改，一个入口给容器中添加一个WebMvcConfigurer
 
-1. 先创建一个KeyHXMessageConvert
+1. 先创建一个KeyHXMessageConvert，实现接口HttpMessageConverter
 
    ```java
    public class KeyHXMessageConvert implements HttpMessageConverter<Person> {
@@ -1730,8 +1730,952 @@ SpringMVC的默认功能的修改，一个入口给容器中添加一个WebMvcCo
      public class GlobalExceptionHandler {
          @ExceptionHandler(value = {ArithmeticException.class,NullPointerException.class}) //处理异常类型
          public String handlerArithException(Exception e){
-     
              return "login";//视图地址
          }
      }
      ```
+     
+   * @ResponseStatus + 自定义异常(继承运行时类)
+   
+     ```java
+     @ResponseStatus(value = HttpStatus.FORBIDDEN,reason = "用户数量太多")
+     public class UserTomManyException extends RuntimeException{
+         public UserTomManyException() {
+         }
+         public UserTomManyException(String message){
+             super(message);
+         }
+     }
+     ```
+   
+     使用：抛出异常
+   
+     ```java
+     if(headerImg.length > 0){
+         throw new UserTomManyException();
+     }
+     ```
+   
+   * HandlerExceptionResolver:自定义实现HandlerExceptionResolver处理异常
+   
+     ```java
+     @Component
+     @Order(value = 1)//数字越小优先级越高
+     public class CustomerHandlerExceptionResolver implements HandlerExceptionResolver {
+         @Override
+         public ModelAndView resolveException(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+             try {
+                 response.sendError(511,"自定义错误");
+             } catch (IOException e) {
+                 throw new RuntimeException(e);
+             }
+             return new ModelAndView();
+         }
+     }
+     ```
+
+### 6、Web原生组件注入(Servlet、Filter、Listener)
+
+#### 6.1 方式一
+
+1. 在main方法中设置@ServletComponentScan(basePackages = "com.hua")：指定原生Servlet组件都放在哪里
+
+   @WebServlet(urlPatterns = "/my")效果：直接响应，没用经过拦截器
+
+   ```java
+   @SpringBootApplication
+   @ServletComponentScan(basePackages = "com.hua")
+   public class Boot05WebAdminApplication {
+       public static void main(String[] args) {
+           SpringApplication.run(Boot05WebAdminApplication.class, args);
+       }
+   }
+   ```
+
+   ```java
+   @WebServlet(urlPatterns = "/my")
+   public class Myservlet extends HttpServlet {
+       @Override
+       protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+           resp.getWriter().write("原生servlet");
+       }
+   }
+   ```
+
+2. Filter
+
+   ```java
+   @Slf4j
+   @WebFilter(urlPatterns = {"/css/*"})//拦截器，拦截的内容
+   public class MyFilter implements Filter {
+       @Override
+       public void init(FilterConfig filterConfig) throws ServletException {
+           log.info("初始化完成");
+       }
+   
+       @Override
+       public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+           log.info("MyFilter工作");
+           filterChain.doFilter(servletRequest,servletResponse);
+       }
+   
+       @Override
+       public void destroy() {
+           log.info("销毁");
+       }
+   }
+   ```
+
+3. Listener
+
+   ```java
+   @Slf4j
+   @WebListener
+   public class MyServletContextListener implements ServletContextListener {
+       @Override
+       public void contextInitialized(ServletContextEvent sce) {
+           log.info("监听到项目初始化完成");
+       }
+   
+       @Override
+       public void contextDestroyed(ServletContextEvent sce) {
+           log.info("监听到项目销毁");
+       }
+   }
+   ```
+
+#### 6.2方式二
+
+ 使用RegistrationBean
+
+MyServlet
+
+```java
+public class Myservlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.getWriter().write("原生servlet");
+    }
+}
+```
+
+MyFilter
+
+```java
+public class MyFilter implements Filter {
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        log.info("初始化完成");
+    }
+
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        log.info("MyFilter工作");
+        filterChain.doFilter(servletRequest,servletResponse);
+    }
+
+    @Override
+    public void destroy() {
+        log.info("销毁");
+    }
+}
+```
+
+MyServletContextListener
+
+```java
+public class MyFilter implements Filter {
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        log.info("初始化完成");
+    }
+
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        log.info("MyFilter工作");
+        filterChain.doFilter(servletRequest,servletResponse);
+    }
+
+    @Override
+    public void destroy() {
+        log.info("销毁");
+    }
+}
+```
+
+配置类
+
+```java
+@Configuration(proxyBeanMethods = true)
+public class MyRegistConfig {
+    @Bean
+    public ServletRegistrationBean myServlet(){
+        Myservlet myservlet = new Myservlet();
+        return new ServletRegistrationBean(myservlet,"/my01","/my02");
+    }
+
+    @Bean
+    public FilterRegistrationBean myFilter(){
+        MyFilter myFilter = new MyFilter();
+//        return new FilterRegistrationBean(myFilter,myServlet());//方式一：拦截myServlet里面的路径
+        FilterRegistrationBean filterRegistrationBean = new FilterRegistrationBean(myFilter);
+        filterRegistrationBean.setUrlPatterns(Arrays.asList("/my01"));
+        return  filterRegistrationBean;
+    }
+
+    @Bean
+    public ServletListenerRegistrationBean myListener(){
+        MyServletContextListener listener = new MyServletContextListener();
+        return new ServletListenerRegistrationBean(listener);
+    }
+}
+```
+
+### 7、定制化原理
+
+#### 7.1 定制化的常见方式
+
+* 修改核心配置文件
+* 编写自定义的配置类  xxxConfiguration + @Bean替换、增加容器中的默认组件
+* web应用，实现WebMvcConfiguration即可定制化Web的功能：实现WebMvcConfiguration接口
+
+## 七、数据访问
+
+#### 7.1 数据源的自动配置
+
+1. 导入依赖
+
+   ```xml
+   <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-data-jdbc</artifactId>
+   </dependency>
+   ```
+
+   导入MySQL驱动，驱动要和数据库版本对应
+
+   ```xml
+   <dependency>
+       <groupId>mysql</groupId>
+       <artifactId>mysql-connector-java</artifactId>
+   </dependency>
+   ```
+
+   自动配置的类
+
+   * DataSourceAutoConfiguration：数据源的自动配置
+   * DataSourceTransactionManagerAutoConfiguration：事务管理的自动配置
+   * JdbcTemplateAutoConfiguration：JdbcTemplate的自动配置，可以来对数据库进行CRUD
+
+2. 修改配置项
+
+   ```yml
+   spring:
+     datasource:
+       url: jdbc:mysql://localhost:3306/test
+       username: root
+       password: abc123
+       driver-class-name: com.mysql.jdbc.Driver
+   ```
+
+3. 测试代码
+
+   ```java
+   @Slf4j
+   @SpringBootTest
+   class Boot05WebAdminApplicationTests {
+       @Autowired
+       JdbcTemplate jdbcTemplate;
+       @Test
+       void contextLoads() {
+           Long length = jdbcTemplate.queryForObject("select count(*) from customers", Long.class);
+           log.info("记录总数：{}",length);
+       }
+   
+   }
+   ```
+
+#### 7.2 使用Druid数据源
+
+1. 方式一：自定义（过时）
+
+   1. 引入依赖
+
+      ```xml
+      <dependency>
+          <groupId>com.alibaba</groupId>
+          <artifactId>druid</artifactId>
+          <version>1.1.17</version>
+      </dependency>
+      ```
+
+      ```java
+      /**
+       * 自动配置数据源
+       */
+      @Configuration
+      public class MyDataSourceConfig {
+          @ConfigurationProperties(prefix = "spring.datasource")//属性与配置文件中的配置一一绑定
+          @Bean
+          public DataSource dataSource(){
+              return new DruidDataSource();
+          }
+      }
+      ```
+
+   2. druid的监控功能
+
+      ```java
+      /**
+       * 自动配置数据源
+       */
+      @Configuration
+      public class MyDataSourceConfig {
+          @ConfigurationProperties(prefix = "spring.datasource")//属性与配置文件中的配置一一绑定
+          @Bean
+          public DataSource dataSource() throws SQLException {
+              DruidDataSource druidDataSource = new DruidDataSource();
+              //加入监控功能
+              druidDataSource.setFilters("stat,wall");
+              return druidDataSource;
+          }
+      
+          /**
+           * 配置Druid的监控页的功能
+           * @return
+           */
+          @Bean
+          public ServletRegistrationBean statViewServlet(){
+              StatViewServlet statViewServlet = new StatViewServlet();
+              ServletRegistrationBean<StatViewServlet> registrationBean = new ServletRegistrationBean<>(statViewServlet, "/druid/*");//访问的地址
+              registrationBean.addInitParameter("loginUsername","admin");//登陆的账户名与密码
+              registrationBean.addInitParameter("loginPassword","123456");
+              return registrationBean;
+          }
+      
+          /**
+           * WebStatFilter 用于采集web-jdbc关联监控的数据
+           * @return
+           */
+          @Bean
+          public FilterRegistrationBean WebStatFilter(){
+              WebStatFilter webStatFilter = new WebStatFilter();
+              FilterRegistrationBean<WebStatFilter> filterRegistrationBean = new FilterRegistrationBean<>(webStatFilter);
+              filterRegistrationBean.setUrlPatterns(Arrays.asList("/*"));
+              filterRegistrationBean.addInitParameter("exclusion","*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*");
+              return filterRegistrationBean;
+          }
+      }
+      ```
+
+2. 使用官方starter方式
+
+   1. 引入依赖
+
+      ```xml
+      <dependency>
+          <groupId>com.alibaba</groupId>
+          <artifactId>druid-spring-boot-starter</artifactId>
+          <version>1.1.17</version>
+      </dependency>
+      ```
+
+   2. 配置文件
+
+      ```yaml
+      spring:
+        datasource:
+          url: jdbc:mysql://localhost:3306/test
+          username: root
+          password: abc123
+          driver-class-name: com.mysql.jdbc.Driver
+      
+          druid:
+            stat-view-servlet:  # 配置监控页
+              enabled: true
+              login-username: admin
+              login-password: 123456
+              reset-enable: false
+      
+            web-stat-filter:  # 监控web
+              enabled: true
+              url-pattern: /*
+              exclusions: '*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*'
+            filters: stat,wall   # 底层开启功能：stat(sql监控) wall(防火墙)
+            filter:
+              stat:
+                slow-sql-millis: 1000
+                log-slow-sql: true
+                enabled: true
+              wall:
+                enabled: true
+      ```
+
+   
+
+#### 7.3 整合MyBatis框架
+
+一、非注解方式
+
+1. 引入依赖
+
+   ```xml
+   <dependency>
+       <groupId>org.mybatis.spring.boot</groupId>
+       <artifactId>mybatis-spring-boot-starter</artifactId>
+       <version>2.1.4</version>
+   </dependency>
+   ```
+
+2. 配置模式
+
+   SqlsessionFactory:自动配置好了
+
+   SqlSession：自动配置了SqlSessionTemplate组合了SqlSession
+
+   Mapper：**只要我们写的操作MyBatis的接口标注了@Mapper 就会自动扫描进来**
+
+   ```java
+   @EnableConfigurationProperties({MybatisProperties.class})：MyBatis配置项绑定类
+   @AutoConfigureAfter({DataSourceAutoConfiguration.class, MybatisLanguageDriverAutoConfiguration.class})
+   @ConfigurationProperties(
+       prefix = "mybatis"
+   )
+   public class MybatisProperties {
+   }
+   ```
+
+   可以修改配置文件中mybatis开始的所有；
+
+   ```yml
+   #配置mybatis规则
+   mybatis:
+   #  config-location: classpath:mybatis-config.xml   # mybatis全局映射文件的位置
+     mapper-locations: classpath:com.hua.mapper/*.xml   #mybatissql映射文件
+     configuration:
+       map-underscore-to-camel-case: true
+       #可以不写全局配置文件，所有全局配置文件都放在configuration配置项中即可
+   ```
+
+   其余操作与mybatis差不多，注意在mapper接口上面添加@mapper
+
+3. 操作步骤
+
+   * 导入mybatis官方starter
+   * 编写mapper接口,标注@Mapper注解
+   * 编写sql映射文件并绑定mapper接口
+   * 在application.yml中指定Mapper配置文件的位置，以及指定全局配置文件的信息(建议：配置在mybatis.config)
+
+二、注解方式
+
+1. mapper接口
+
+   ```java
+   @Mapper
+   public interface CityMapper {
+   
+       @Select("select * from city where id=#{id}")
+       public City getById(Long id);
+   
+       @Insert("insert into city(`name`,`state`,`country`) values (#{name},#{state},#{country})")
+       @Options(useGeneratedKeys = true,keyProperty = "id")
+       public void insert(City city);
+   }
+   ```
+
+2. service
+
+   ```java
+   @Service
+   public class CityService {
+       @Autowired
+       CityMapper cityMapper;
+   
+       public City getById(Long id){
+           return cityMapper.getById(id);
+       }
+   
+       public void saveCity(City city) {
+           cityMapper.insert(city);
+       }
+   }
+   ```
+
+3. controller
+
+   ```java
+   @ResponseBody
+   @PostMapping("/city")
+   public City saveCity(City city){
+       cityService.saveCity(city);
+       return city;
+   }
+   
+   @ResponseBody
+   @GetMapping("/city")
+   public City getCityById(@RequestParam("id") Long id){
+       return cityService.getById(id);
+   }
+   ```
+
+   最佳实战：
+
+   * 引入mybatis-starter
+   * 配置application.yaml，指定mapper-location位置即可
+   * 编写mapper接口并标注@Mapper接口
+   * 简单方法直接注解方式
+   * 复杂方法编写mapper.xml进行绑定映射
+
+#### 7.4 整合MyBatis-Plus
+
+1. 引入依赖
+
+   ```xml
+           <dependency>
+               <groupId>mysql</groupId>
+               <artifactId>mysql-connector-java</artifactId>
+               <version>8.0.26</version>
+           </dependency>
+   ```
+
+2. 配置
+
+   mybatis-plus：xxxx就是对mybatis-plus的定制
+
+   SqlSessionFactory 自动配置好的
+
+   mapperLoations：自动配置好的，有默认值。建议以后sql映射文件都放在mapper路径下
+
+   SqlSessionTemplates：自动配置好
+
+   @Mapper标注的也会自动扫描
+
+3. 优点
+
+   * 只需要mapper接口继承BaseMapper就可以拥有CRUD，不需要自己写了
+
+4. 完整流程
+
+   * 创建数据库表user
+
+   * 创建UserBean
+
+     ```java
+     @Data
+     @TableName("user_test")//指定表名
+     public class User {
+         /**
+          * 存在的所有属性都应该在数据库中有对应的字段
+          */
+         @TableField(exist = false) //MyBatis-plus新增功能，批注该属性在数据库中没有字段
+         private String userName;
+         @TableField(exist = false)
+         private String password;
+     
+         private Long id;
+         private String name;
+         private Integer age;
+         private String email;
+     }
+     ```
+
+   * 创建对应的mapper接口
+
+     ```java
+     /**
+      * 继承BaseMapper
+      */
+     public interface UserMapper extends BaseMapper<User> {
+     
+     }
+     ```
+
+   * 测试
+
+     ```java
+     @Test
+     void testUserMapper(){
+         User user = userMapper.selectById(1L);
+         log.info("用户信息：{}",user);
+     }
+     ```
+
+## 八、单元测试
+
+#### 8.1 JUnit5 的变化
+
+**Spring Boot 2.2.0 版本开始引入 JUnit 5 作为单元测试默认库**
+
+作为最新版本的JUnit框架，JUnit5与之前版本的Junit框架有很大的不同。由三个不同子项目的几个不同模块组成。
+
+**JUnit 5 = JUnit Platform + JUnit Jupiter + JUnit Vintage**
+
+**JUnit Platform**: Junit Platform是在JVM上启动测试框架的基础，不仅支持Junit自制的测试引擎，其他测试引擎也都可以接入。
+
+**JUnit Jupiter**: JUnit Jupiter提供了JUnit5的新的编程模型，是JUnit5新特性的核心。内部 包含了一个**测试引擎**，用于在Junit Platform上运行。
+
+**JUnit Vintage**: 由于JUint已经发展多年，为了照顾老的项目，JUnit Vintage提供了兼容JUnit4.x,Junit3.x的测试引擎。
+
+
+
+
+
+注意：
+
+**SpringBoot 2.4 以上版本移除了默认对** **Vintage 的依赖。如果需要兼容junit4需要自行引入（不能使用junit4的功能 @Test****）**
+
+**JUnit 5’s Vintage Engine Removed from** `**spring-boot-starter-test,如果需要继续兼容junit4需要自行引入vintage**`
+
+```xml
+<dependency>
+    <groupId>org.junit.vintage</groupId>
+    <artifactId>junit-vintage-engine</artifactId>
+    <scope>test</scope>
+    <exclusions>
+        <exclusion>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-core</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+```
+
+
+
+引入测试依赖
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-test</artifactId>
+  <scope>test</scope>
+</dependency>
+```
+
+SpringBoot整合Junit以后
+
+* 编写测试方法：@Test标注(注意使用junit5版本)
+* Junit类具有Spring功能：比如@Transactional标注测试方法，测试完成之后自动回滚
+
+#### 8.2  Junit5常用注解
+
+https://junit.org/junit5/docs/current/user-guide/#writing-tests-annotations
+
+- **@Test :**表示方法是测试方法。但是与JUnit4的@Test不同，他的职责非常单一不能声明任何属性，拓展的测试将会由Jupiter提供额外测试
+- **@ParameterizedTest :**表示方法是参数化测试，下方会有详细介绍
+- **@RepeatedTest :**表示方法可重复执行，下方会有详细介绍
+- **@DisplayName :**为测试类或者测试方法设置展示名称
+- **@BeforeEach :**表示在每个单元测试之前执行
+- **@AfterEach :**表示在每个单元测试之后执行
+- **@BeforeAll :**表示在所有单元测试之前执行
+- **@AfterAll :**表示在所有单元测试之后执行
+- **@Tag :**表示单元测试类别，类似于JUnit4中的@Categories
+- **@Disabled :**表示测试类或测试方法不执行，类似于JUnit4中的@Ignore
+- **@Timeout :**表示测试方法运行如果超过了指定时间将会返回错误
+- **@ExtendWith :**为测试类或测试方法提供扩展类引用
+
+```java
+@DisplayName("junit5功能测试")
+//@SpringBootTest
+public class Junit5Test {
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
+    @DisplayName("测试DisplayName注解")
+    @Test
+    void testDisplayName(){
+        System.out.println(1);
+        System.out.println(jdbcTemplate);
+    }
+
+    @Disabled//禁用
+    @DisplayName("测试方法2")
+    @Test
+    void test2(){
+        System.out.println(2);
+    }
+
+    @RepeatedTest(5)//重复测试
+    @Test
+    void test3(){
+        System.out.println(5);
+    }
+    /**
+     * 规定方法超时时间，超出时间测试出异常
+     * @throws InterruptedException
+     */
+    @Timeout(value = 5,unit = TimeUnit.MILLISECONDS)
+    @Test
+    void testTimeOut() throws InterruptedException {
+        Thread.sleep(1);
+    }
+
+
+    @BeforeEach
+    void testBeforeEach(){
+        System.out.println("测试就要开始了！");
+    }
+
+
+    @AfterEach
+     void testAfterEach(){
+        System.out.println("测试结束了！");
+    }
+
+    @BeforeAll
+    static void testBeforeAll(){
+        System.out.println("所有测试就要开始了！");
+    }
+
+    @AfterAll
+    static void testAfterAll(){
+        System.out.println("所有测试已经结束了！");
+    }
+}
+```
+
+#### 8.3 断言
+
+断言（assertions）是测试方法中的核心部分，用来对测试需要满足的条件进行验证。这些断言方法都org.junit.jupiter.api.Assertions 的静态方法。JUnit 5 内置的断言可以分成如下几个类别：
+
+**检查业务逻辑返回的数据是否合理。**
+
+**所有的测试运行结束以后，会有一个详细的测试报告；**
+
+1. 简单断言
+
+   | 方法            | 说明                                 |
+   | --------------- | ------------------------------------ |
+   | assertEquals    | 判断两个对象或两个原始类型是否相等   |
+   | assertNotEquals | 判断两个对象或两个原始类型是否不相等 |
+   | assertSame      | 判断两个对象引用是否指向同一个对象   |
+   | assertNotSame   | 判断两个对象引用是否指向不同的对象   |
+   | assertTrue      | 判断给定的布尔值是否为 true          |
+   | assertFalse     | 判断给定的布尔值是否为 false         |
+   | assertNull      | 判断给定的对象引用是否为 null        |
+   | assertNotNull   | 判断给定的对象引用是否不为 null      |
+
+   ```java
+   /**
+    * 断言：前面断言失败，后面的代码都不会执行
+    */
+   @DisplayName("测试简单断言")
+   @Test
+   void testSimpleAssertions(){
+       int cal = cal(2, 3);
+       //相等
+       assertEquals(6,cal,"业务逻辑计算失败");
+       Object obj1 = new Object();
+       Object obj2 = new Object();
+       //判断两个对象是否一样
+       assertSame(obj1,obj2,"两个对象不一样");
+   }
+   ```
+
+2. 数组断言
+
+   通过 assertArrayEquals 方法来判断两个对象或原始类型的数组是否相等
+
+   ```java
+   @Test
+   @DisplayName("array assertion")
+   void array(){
+       assertArrayEquals(new int[]{1,3},new int[]{1,2},"数组内容不相等");
+   }
+   ```
+
+3. 组合断言
+
+   assertAll 方法接受多个 org.junit.jupiter.api.Executable 函数式接口的实例作为要验证的断言，可以通过 lambda 表达式很容易的提供这些断言
+
+   ```java
+   /**
+    * 组合断言，声明的所有断言全部成功，才能往下走
+    */
+   @Test
+   @DisplayName("组合断言")
+   void all(){
+      assertAll("test",
+              () -> assertTrue(true && true),
+              () -> assertEquals(1,2)
+              );
+   }
+   ```
+
+4. 异常断言
+
+   ```java
+   @DisplayName("异常断言")
+   @Test
+   void testException(){
+       //断定业务逻一定出现异常
+       assertThrows(ArithmeticException.class,() -> {
+           int i = 10 / 1;
+       },"业务逻辑正常执行？");
+   }
+   ```
+
+5. 快速失败
+
+   ```java
+   @DisplayName("快速失败")
+   @Test
+   void testFail(){
+       if(2 == 2){
+           fail("测试失败");
+       }
+   }
+   ```
+
+6. 前置断言
+
+   JUnit 5 中的前置条件（**assumptions【假设】**）类似于断言，不同之处在于**不满足的断言会使得测试方法失败**，而不满足的**前置条件只会使得测试方法的执行终止**。前置条件可以看成是测试方法执行的前提，当该前提不满足时，就没有继续执行的必要。
+
+   ```java
+   /**
+    * 测试前置条件
+    */
+   @Test
+   @DisplayName("测试前置条件")
+   void testassumption(){
+       Assumptions.assumeTrue(false,"结果不是true");
+       System.out.println(111111);
+   }
+   ```
+
+7. 嵌套测试
+
+   JUnit 5 可以通过 Java 中的内部类和@Nested 注解实现嵌套测试，从而可以更好的把相关的测试方法组织在一起。在内部类中可以使用@BeforeEach 和@AfterEach 注解，而且嵌套的层次没有限制。
+
+   ```java
+   package com.hua;
+   
+   import org.junit.jupiter.api.BeforeEach;
+   import org.junit.jupiter.api.DisplayName;
+   import org.junit.jupiter.api.Nested;
+   import org.junit.jupiter.api.Test;
+   
+   import java.util.EmptyStackException;
+   import java.util.Stack;
+   
+   import static org.junit.jupiter.api.Assertions.*;
+   
+   @DisplayName("嵌套测试")
+   public class TestingAStackDemo {
+       Stack<Object> stack;
+   
+       @Test
+       @DisplayName("is instantiated with new Stack()")
+       void isInstantiatedWithNew() {
+           new Stack<>();
+           //嵌套测试的情况下，外层的Test不能驱动内层BeforeEach之类的方法提前/之后运行
+           assertNotNull(stack);
+       }
+   
+       @Nested
+       @DisplayName("when new")
+       class WhenNew {
+   
+           @BeforeEach
+           void createNewStack() {
+               stack = new Stack<>();
+           }
+   
+           @Test
+           @DisplayName("is empty")
+           void isEmpty() {
+               assertTrue(stack.isEmpty());
+           }
+   
+           @Test
+           @DisplayName("throws EmptyStackException when popped")
+           void throwsExceptionWhenPopped() {
+               assertThrows(EmptyStackException.class, stack::pop);
+           }
+   
+           @Test
+           @DisplayName("throws EmptyStackException when peeked")
+           void throwsExceptionWhenPeeked() {
+               assertThrows(EmptyStackException.class, stack::peek);
+           }
+   
+           @Nested
+           @DisplayName("after pushing an element")
+           class AfterPushing {
+   
+               String anElement = "an element";
+   
+               @BeforeEach
+               void pushAnElement() {
+                   stack.push(anElement);
+               }
+   
+               /**
+                * 内层的test可以驱动外层的
+                */
+               @Test
+               @DisplayName("it is no longer empty")
+               void isNotEmpty() {
+                   assertFalse(stack.isEmpty());
+               }
+   
+               @Test
+               @DisplayName("returns the element when popped and is empty")
+               void returnElementWhenPopped() {
+                   assertEquals(anElement, stack.pop());
+                   assertTrue(stack.isEmpty());
+               }
+   
+               @Test
+               @DisplayName("returns the element when peeked but remains not empty")
+               void returnElementWhenPeeked() {
+                   assertEquals(anElement, stack.peek());
+                   assertFalse(stack.isEmpty());
+               }
+           }
+       }
+   }
+   ```
+
+8. 参数化测试
+
+   参数化测试是JUnit5很重要的一个新特性，它使得用不同的参数多次运行测试成为了可能，也为我们的单元测试带来许多便利。
+
+   **@ValueSource**: 为参数化测试指定入参来源，支持八大基础类以及String类型,Class类型
+
+   **@NullSource**: 表示为参数化测试提供一个null的入参
+
+   **@EnumSource**: 表示为参数化测试提供一个枚举入参
+
+   **@CsvFileSource**：表示读取指定CSV文件内容作为参数化测试入参
+
+   **@MethodSource**：表示读取指定方法的返回值作为参数化测试入参(注意方法返回需要是一个流)
+
+   ```java
+   @ParameterizedTest
+   @DisplayName("参数化测试")
+   @ValueSource(strings = {"1","2","3","4","5"})
+   void testParameterized(String i){
+       System.out.println(i);
+   }
+   
+   @ParameterizedTest
+   @DisplayName("参数化测试")
+   @MethodSource("stringProvider")
+   void testParameterized2(String i){
+       System.out.println(i);
+   }
+   
+   static Stream<String> stringProvider(){
+       return Stream.of("apple","banana","KeyHX");
+   }
+   ```
+
+## 九、指标监控
+
+#### 9.1 SpringBoot Actuator
+
+1. 简介
+
+   未来每一个微服务在云上部署以后，我们都需要对其进行监控、追踪、审计、控制等。SpringBoot就抽取了Actuator场景，使得我们每个微服务快速引用即可获得生产级别的应用监控、审计等功能。
+
